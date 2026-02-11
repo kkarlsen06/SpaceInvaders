@@ -1,9 +1,11 @@
 {
-    "easy": 0,
+    "easy": 1022,
     "medium": 0,
     "hard": 0,
     "impossible": 0,
     "level_mode": {
-
+        "level_1": 116,
+        "level_2": 155,
+        "level_3": 0
     }
 }
