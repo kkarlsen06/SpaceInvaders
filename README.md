@@ -4,18 +4,20 @@ A classic Space Invaders game implemented in Python using Pygame.
 
 ## Running the Game
 
-Simply run the main game file:
+Create a virtual environment and install in development mode:
 
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
-python space_invaders_game.py
-```
 
-The game will automatically check if Pygame is installed and try to install it if needed.
+Run the game:
 
-If automatic installation fails, you'll need to install pygame manually:
-
-```
-pip install pygame
+```bash
+python -m space_invaders
+# or use the installed command:
+space-invaders
 ```
 
 ## Controls
@@ -23,6 +25,7 @@ pip install pygame
 - **Left Arrow / A**: Move left
 - **Right Arrow / D**: Move right
 - **Space / W / Up Arrow**: Shoot
+- **1 / 2 / 3**: Switch weapons (Laser / Shotgun / Electric Whip)
 - **F**: Toggle Fullscreen
 - **ESC**: Pause/Quit the current game
 - **Enter**: Confirm selection
@@ -36,9 +39,32 @@ pip install pygame
 
 - Varied enemies with different health points
 - Score multiplier system
-- Weapon upgrades at higher scores
-- Power-ups
-- High score tracking
+- Weapon upgrades (Shotgun at level 5+, Electric Whip at level 10+)
+- Power-ups (extra lives)
+- High score tracking per difficulty and level
+- Mouse control support (toggle in Settings)
+- Fullscreen mode
+
+## Project Structure
+
+```
+src/space_invaders/
+    __main__.py          # Entry point
+    constants.py         # All game constants and difficulty config
+    config.py            # Configuration and high-score persistence
+    state.py             # GameState dataclass and GameScreen enum
+    game.py              # Main Game class with game loop
+    entities/            # Game entities (Player, Enemy, Shot, etc.)
+    systems/             # Game systems (AssetManager, InputHandler, Renderer, etc.)
+    ui/                  # UI rendering (Menu, HUD, Dialogs)
+```
+
+## Testing
+
+```bash
+pip install pytest
+pytest tests/
+```
 
 ## Credits
 

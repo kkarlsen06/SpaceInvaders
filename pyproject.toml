@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "space-invaders"
+version = "1.0.0"
+description = "A Space Invaders game built with Pygame"
+requires-python = ">=3.10"
+dependencies = ["pygame>=2.5"]
+
+[project.scripts]
+space-invaders = "space_invaders.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
