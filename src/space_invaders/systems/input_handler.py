@@ -65,6 +65,12 @@ class InputHandler:
 
     def _handle_mousedown(self, event: pygame.event.Event) -> None:
         g = self.game
+
+        # Menu button clicks
+        if g.state.screen == GameScreen.MENU and event.button == 1:
+            self._handle_menu_click(event.pos)
+            return
+
         if not g.state.mouse_control or g.state.screen != GameScreen.PLAYING:
             return
         if event.button == 1:
@@ -80,6 +86,48 @@ class InputHandler:
                 g.player.shoot(g.all_sprites, g.shot_group, g.active_shots,
                                g.assets.sounds["shoot"], g.state.difficulty,
                                g.enemy_group, "electric whip")
+
+    def _handle_menu_click(self, pos: tuple[int, int]) -> None:
+        g = self.game
+        btns = g.state.menu_buttons
+        if not btns:
+            return
+
+        difficulty_map = {"easy": 1, "medium": 2, "hard": 3, "impossible": 4}
+        for key, diff in difficulty_map.items():
+            if key in btns and btns[key].collidepoint(pos):
+                if key == "impossible" and not g.game_config["unlock_impossible"]:
+                    return
+                g.state.difficulty = diff
+                g.state.level_mode = False
+                g.state.screen = GameScreen.PLAYING
+                g.state.show_menu = False
+                g.start_round()
+                return
+
+        if "level_mode" in btns and btns["level_mode"].collidepoint(pos):
+            g.state.level_mode = True
+            g.state.current_level_page = 0
+            g.state.screen = GameScreen.LEVEL_SELECT
+            return
+
+        if "help" in btns and btns["help"].collidepoint(pos):
+            g.state.screen = GameScreen.HELP
+            return
+
+        if "settings" in btns and btns["settings"].collidepoint(pos):
+            g.state.screen = GameScreen.SETTINGS
+            return
+
+        weapon_map = {
+            "weapon_laser": "normal",
+            "weapon_shotgun": "shotgun",
+            "weapon_whip": "electric whip",
+        }
+        for btn_key, weapon_name in weapon_map.items():
+            if btn_key in btns and btns[btn_key].collidepoint(pos):
+                g.player.switch_weapon(weapon_name, g.game_config["max_level_reached"])
+                return
 
     # ------------------------------------------------------------------
     # Menu

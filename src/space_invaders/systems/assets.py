@@ -111,16 +111,17 @@ class AssetManager:
     # ------------------------------------------------------------------
 
     def _load_fonts(self) -> None:
+        from space_invaders.constants import FONT_SIZES
+
         font_path = self.assets_dir / "nasalization-rg.ttf"
-        sizes = {"small": 18, "medium": 24, "large": 36, "xlarge": 48}
         try:
             if font_path.exists():
-                for name, size in sizes.items():
+                for name, size in FONT_SIZES.items():
                     self.fonts[name] = pygame.font.Font(str(font_path), size)
             else:
                 raise FileNotFoundError(f"Font not found: {font_path}")
         except (FileNotFoundError, pygame.error):
-            for name, size in sizes.items():
+            for name, size in FONT_SIZES.items():
                 self.fonts[name] = pygame.font.SysFont("arial", size)
 
     # ------------------------------------------------------------------

@@ -8,16 +8,13 @@ import random
 import pygame
 
 from space_invaders.constants import (
-    BLACK,
-    BLUE,
+    Colors,
+    ELECTRICAL_PARTICLE_LIFETIME,
     EXPLOSION_FRAME_RATE_MS,
     EXPLOSION_FRAMES,
-    EXPLOSION_SHRINK_PER_FRAME,
     EXPLOSION_SIZE,
-    ORANGE,
     PARTICLE_LIFETIME,
     PARTICLE_SIZE,
-    ELECTRICAL_PARTICLE_LIFETIME,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     WHIP_ANGULAR_SPEED,
@@ -30,52 +27,97 @@ from space_invaders.constants import (
 
 
 class Explosion(pygame.sprite.Sprite):
-    """Orange circle explosion animation."""
+    """Multi-ring explosion with core flash and expanding shockwave ring."""
 
     def __init__(self, center: tuple[int, int]) -> None:
         super().__init__()
-        self.image = pygame.Surface((EXPLOSION_SIZE, EXPLOSION_SIZE))
-        half = EXPLOSION_SIZE // 2
-        pygame.draw.circle(self.image, ORANGE, (half, half), half)
-        self.image.set_colorkey(BLACK)
+        self.size = EXPLOSION_SIZE
+        self.image = pygame.Surface((self.size * 2, self.size * 2), pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=center)
         self.frame = 0
         self.last_update = pygame.time.get_ticks()
         self.frame_rate = EXPLOSION_FRAME_RATE_MS
+        self.max_frames = EXPLOSION_FRAMES + 3  # extra frames for ring
+        self._draw_frame()
+
+    def _draw_frame(self) -> None:
+        self.image.fill((0, 0, 0, 0))
+        cx, cy = self.image.get_width() // 2, self.image.get_height() // 2
+        progress = self.frame / self.max_frames
+
+        # Expanding shockwave ring
+        ring_radius = int(self.size * 0.4 + self.size * 0.8 * progress)
+        ring_alpha = int(120 * (1 - progress))
+        ring_width = max(1, int(3 * (1 - progress)))
+        if ring_alpha > 0:
+            pygame.draw.circle(
+                self.image, (*Colors.EXPLOSION_RING[:3], ring_alpha),
+                (cx, cy), ring_radius, ring_width,
+            )
+
+        # Core glow (bright to dim)
+        if progress < 0.7:
+            core_progress = progress / 0.7
+            core_r = int(self.size * 0.35 * (1 - core_progress * 0.6))
+            core_alpha = int(200 * (1 - core_progress))
+            if core_r > 1 and core_alpha > 0:
+                # Outer glow
+                pygame.draw.circle(
+                    self.image, (*Colors.EXPLOSION_OUTER[:3], core_alpha // 3),
+                    (cx, cy), core_r + 6,
+                )
+                # Mid layer
+                pygame.draw.circle(
+                    self.image, (*Colors.EXPLOSION_MID[:3], core_alpha // 2),
+                    (cx, cy), core_r + 2,
+                )
+                # Hot core
+                pygame.draw.circle(
+                    self.image, (*Colors.EXPLOSION_CORE[:3], core_alpha),
+                    (cx, cy), core_r,
+                )
 
     def update(self, dt: float = 1 / 60) -> None:
         now = pygame.time.get_ticks()
         if now - self.last_update > self.frame_rate:
             self.last_update = now
             self.frame += 1
-            if self.frame == EXPLOSION_FRAMES:
+            if self.frame >= self.max_frames:
                 self.kill()
             else:
-                center = self.rect.center
-                size = EXPLOSION_SIZE - self.frame * EXPLOSION_SHRINK_PER_FRAME
-                if size < 2:
-                    self.kill()
-                    return
-                self.image = pygame.Surface((size, size))
-                half = size // 2
-                pygame.draw.circle(self.image, ORANGE, (half, half), half)
-                self.image.set_colorkey(BLACK)
-                self.rect = self.image.get_rect(center=center)
+                self._draw_frame()
 
 
 class Particle(pygame.sprite.Sprite):
-    """Generic particle for visual effects."""
+    """Generic particle with color fade-out."""
 
-    def __init__(self, pos: tuple[int, int], angle: float, speed: float) -> None:
+    def __init__(
+        self,
+        pos: tuple[int, int],
+        angle: float,
+        speed: float,
+        color: tuple[int, ...] | None = None,
+    ) -> None:
         super().__init__()
-        self.image = pygame.Surface((PARTICLE_SIZE, PARTICLE_SIZE))
-        self.image.fill(BLUE)
+        self._color = color or Colors.PRIMARY
+        self.image = pygame.Surface((PARTICLE_SIZE, PARTICLE_SIZE), pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=pos)
         self.x = float(pos[0])
         self.y = float(pos[1])
         self.velocity_x = math.cos(angle) * speed
         self.velocity_y = math.sin(angle) * speed
         self.lifetime = PARTICLE_LIFETIME
+        self.max_lifetime = PARTICLE_LIFETIME
+        self._redraw()
+
+    def _redraw(self) -> None:
+        fade = max(self.lifetime / self.max_lifetime, 0)
+        alpha = int(255 * fade)
+        self.image.fill((0, 0, 0, 0))
+        c = self._color
+        # Draw a soft circle instead of a solid square
+        center = PARTICLE_SIZE // 2
+        pygame.draw.circle(self.image, (*c[:3], alpha), (center, center), center)
 
     def update(self, dt: float = 1 / 60) -> None:
         self.x += self.velocity_x * dt * 60
@@ -85,22 +127,26 @@ class Particle(pygame.sprite.Sprite):
         self.lifetime -= 1
         if self.lifetime <= 0:
             self.kill()
+        else:
+            self._redraw()
 
 
 class ElectricalParticle(Particle):
     """Electric-blue particle with flickering effect."""
 
     def __init__(self, pos: tuple[int, int], angle: float, speed: float) -> None:
-        super().__init__(pos, angle, speed)
-        self.image.fill((100, 200, 255))
+        super().__init__(pos, angle, speed, color=(100, 200, 255))
         self.lifetime = ELECTRICAL_PARTICLE_LIFETIME
+        self.max_lifetime = ELECTRICAL_PARTICLE_LIFETIME
 
     def update(self, dt: float = 1 / 60) -> None:
         super().update(dt)
-        if random.random() < 0.5:
-            self.image.fill((200, 230, 255))
-        else:
-            self.image.fill((80, 150, 255))
+        if self.lifetime > 0:
+            if random.random() < 0.5:
+                self._color = (200, 230, 255)
+            else:
+                self._color = (80, 150, 255)
+            self._redraw()
 
 
 class ElectricWhip(pygame.sprite.Sprite):
@@ -170,10 +216,10 @@ class ElectricWhip(pygame.sprite.Sprite):
 
                 ex, ey = enemy.rect.center
                 wx, wy = self.rect.center
-                dx = ex - wx
-                dy = ey - wy
-                distance = math.sqrt(dx * dx + dy * dy)
-                angle_to_enemy = math.degrees(math.atan2(-dy, dx))
+                ddx = ex - wx
+                ddy = ey - wy
+                distance = math.sqrt(ddx * ddx + ddy * ddy)
+                angle_to_enemy = math.degrees(math.atan2(-ddy, ddx))
 
                 while angle_to_enemy < 0:
                     angle_to_enemy += 360

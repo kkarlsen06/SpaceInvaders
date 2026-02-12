@@ -5,7 +5,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 FPS = 60
 
-# Colors
+# Legacy colors (kept for entity/effect code)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 23, 68)
@@ -14,13 +14,105 @@ BLUE = (0, 123, 255)
 ORANGE = (255, 165, 0)
 GOLD = (255, 215, 0)
 
-# Pastel colors for UI
+
+# ---------------------------------------------------------------------------
+# Modern UI Color Palette
+# ---------------------------------------------------------------------------
+
+class Colors:
+    """Semantic color palette for the modern UI."""
+
+    # Backgrounds
+    BG_DEEP       = (8, 10, 18)
+    BG_PRIMARY    = (14, 17, 30)
+    BG_CARD       = (20, 24, 42)
+    BG_CARD_HOVER = (28, 33, 55)
+    BG_OVERLAY    = (8, 10, 18, 200)
+
+    # Borders
+    BORDER_SUBTLE = (40, 45, 70)
+    BORDER_MEDIUM = (55, 62, 95)
+    BORDER_BRIGHT = (80, 90, 130)
+
+    # Primary accent: Teal/Cyan
+    PRIMARY       = (0, 210, 210)
+    PRIMARY_LIGHT = (80, 235, 235)
+    PRIMARY_DIM   = (0, 140, 140)
+    PRIMARY_GLOW  = (0, 210, 210, 60)
+
+    # Secondary accent: Amber/Gold
+    SECONDARY       = (255, 195, 50)
+    SECONDARY_LIGHT = (255, 220, 100)
+    SECONDARY_DIM   = (180, 140, 30)
+
+    # Difficulty tiers
+    EASY          = (100, 220, 180)
+    EASY_BG       = (20, 50, 40)
+    MEDIUM        = (220, 200, 100)
+    MEDIUM_BG     = (50, 45, 20)
+    HARD          = (230, 90, 90)
+    HARD_BG       = (55, 20, 20)
+    IMPOSSIBLE    = (180, 120, 255)
+    IMPOSSIBLE_BG = (40, 25, 60)
+    LEVEL         = (170, 130, 255)
+    LEVEL_BG      = (35, 25, 55)
+
+    # Text
+    TEXT_PRIMARY   = (240, 240, 250)
+    TEXT_SECONDARY = (160, 165, 190)
+    TEXT_MUTED     = (100, 105, 130)
+    TEXT_SHADOW    = (0, 0, 0)
+
+    # Semantic
+    SUCCESS       = (60, 210, 120)
+    DANGER        = (255, 60, 80)
+    LOCKED        = (80, 80, 95)
+    LOCKED_TEXT   = (110, 110, 125)
+
+    # Whip charge
+    WHIP_CHARGING = (230, 70, 70)
+    WHIP_READY    = (255, 100, 100)
+
+    # Glow / accent effects
+    GLOW_PRIMARY    = (0, 210, 210, 40)
+    GLOW_SECONDARY  = (255, 195, 50, 40)
+    GLOW_DANGER     = (255, 60, 80, 40)
+    GLOW_SUCCESS    = (60, 210, 120, 40)
+
+    # Gradient bar accents
+    ACCENT_LINE_TOP    = (0, 180, 200, 120)
+    ACCENT_LINE_BOTTOM = (0, 180, 200, 80)
+
+    # Star colors (subtle tints for depth)
+    STAR_WARM   = (255, 240, 220)
+    STAR_COOL   = (200, 220, 255)
+    STAR_BLUE   = (160, 200, 255)
+    STAR_WHITE  = (240, 240, 255)
+
+    # Explosion palette
+    EXPLOSION_CORE  = (255, 255, 200)
+    EXPLOSION_MID   = (255, 160, 40)
+    EXPLOSION_OUTER = (255, 80, 20)
+    EXPLOSION_RING  = (255, 200, 100, 100)
+
+
+# Backwards-compatible pastel mapping
 PASTEL_COLORS = {
-    "easy": (180, 230, 220),
-    "medium": (230, 220, 180),
-    "hard": (230, 180, 180),
-    "impossible": (180, 180, 230),
-    "level": (210, 180, 230),
+    "easy": Colors.EASY,
+    "medium": Colors.MEDIUM,
+    "hard": Colors.HARD,
+    "impossible": Colors.IMPOSSIBLE,
+    "level": Colors.LEVEL,
+}
+
+# Font sizes
+FONT_SIZES = {
+    "tiny": 13,
+    "small": 18,
+    "medium": 24,
+    "large": 36,
+    "xlarge": 48,
+    "title": 56,
 }
 
 # Player
@@ -91,9 +183,9 @@ EXPLOSION_FRAME_RATE_MS = 50
 EXPLOSION_SHRINK_PER_FRAME = 8
 
 # Stars
-STAR_COUNT = 100
-STAR_MIN_SPEED = 1.0
-STAR_MAX_SPEED = 5.0
+STAR_COUNT = 150
+STAR_MIN_SPEED = 0.5
+STAR_MAX_SPEED = 4.0
 STAR_MIN_SIZE = 1
 STAR_MAX_SIZE = 3
 

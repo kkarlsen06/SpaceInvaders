@@ -8,171 +8,207 @@ from typing import TYPE_CHECKING
 import pygame
 
 from space_invaders.constants import (
-    BLUE,
-    CYAN,
-    GOLD,
-    PASTEL_COLORS,
-    RED,
+    Colors,
+    DIFFICULTY_CONFIG,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
-    WHITE,
-    DIFFICULTY_CONFIG,
 )
 from space_invaders.state import GameScreen
 from space_invaders.systems.scoring import get_current_high_score
 from space_invaders.systems.levels import set_level_requirements
+from space_invaders.ui.draw_utils import draw_glass_bar, draw_slider, draw_text
 
 if TYPE_CHECKING:
     from space_invaders.game import Game
 
 
 def draw_hud(g: Game) -> None:
-    """Draw score, lives, difficulty, multiplier, and weapon panel."""
+    """Draw the minimalist HUD with glassmorphism bars."""
     fonts = g.assets.fonts
     screen = g.screen
     state = g.state
 
-    # Score
-    score_txt = fonts["small"].render(f"Poeng: {state.score}", True, WHITE)
-    screen.blit(score_txt, (10, 10))
+    top_h = 36
+    bottom_h = 40
 
-    # High score (normal mode only)
-    if not state.level_mode:
-        hs = get_current_high_score(state.difficulty, state.level, state.level_mode, g.high_scores)
-        hs_txt = fonts["small"].render(f"High Score: {hs}", True, GOLD)
-        screen.blit(hs_txt, (SCREEN_WIDTH - hs_txt.get_width() - 10, 10))
+    # Top bar — glass style with accent line at bottom
+    draw_glass_bar(screen, (0, 0, SCREEN_WIDTH, top_h),
+                   alpha=150, accent_color=Colors.PRIMARY, accent_side="bottom")
 
-    # Lives
-    lives_txt = fonts["small"].render(f"Liv: {g.player.lives}", True, WHITE)
-    screen.blit(lives_txt, (10, 40))
+    # Score (top-left)
+    draw_text(screen, "SCORE", fonts["tiny"], Colors.TEXT_MUTED, (14, 4))
+    draw_text(screen, str(state.score), fonts["small"], Colors.SECONDARY, (14, 16))
 
     # Difficulty / level indicator
     if state.level_mode:
-        lvl_txt = fonts["small"].render(f"Level: {state.level}", True, BLUE)
-        screen.blit(lvl_txt, (10, 70))
+        draw_text(screen, f"LEVEL {state.level}", fonts["small"],
+                  Colors.LEVEL, (160, 9))
     else:
         diff_cfg = DIFFICULTY_CONFIG[state.difficulty]
-        colors = {1: CYAN, 2: (255, 255, 0), 3: RED, 4: (255, 0, 255)}
-        c = colors.get(state.difficulty, WHITE)
-        d_txt = fonts["small"].render(f"Nivå: {diff_cfg['name']}", True, c)
-        screen.blit(d_txt, (10, 70))
+        tier_colors = {
+            1: Colors.EASY, 2: Colors.MEDIUM,
+            3: Colors.HARD, 4: Colors.IMPOSSIBLE,
+        }
+        c = tier_colors.get(state.difficulty, Colors.TEXT_PRIMARY)
+        # Glowing colored dot + text
+        dot_x, dot_y = 155, top_h // 2
+        # Glow ring
+        glow_surf = pygame.Surface((18, 18), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*c[:3], 40), (9, 9), 9)
+        screen.blit(glow_surf, (dot_x - 9, dot_y - 9))
+        pygame.draw.circle(screen, c, (dot_x, dot_y), 4)
+        draw_text(screen, diff_cfg['name'], fonts["tiny"], c, (dot_x + 10, 10))
 
-    # Level progress bar (level mode)
+    # Level progress bar (center, level mode)
     if state.level_mode and state.screen == GameScreen.PLAYING:
         reqs = set_level_requirements(state.level)
-        prog = fonts["small"].render(
-            f"Progress: {state.score}/{reqs['target_score']}", True, WHITE)
-        screen.blit(prog, (SCREEN_WIDTH // 2 - prog.get_width() // 2, 10))
+        target = reqs['target_score']
+        progress = min(state.score / target, 1.0) if target > 0 else 0
+        bar_w = 200
+        bar_rect = pygame.Rect(SCREEN_WIDTH // 2 - bar_w // 2, 10, bar_w, 12)
+        draw_slider(screen, bar_rect, progress,
+                    fill_color=Colors.PRIMARY, show_handle=False)
+        draw_text(screen, f"{state.score}/{target}", fonts["tiny"],
+                  Colors.TEXT_MUTED,
+                  (SCREEN_WIDTH // 2, 24), anchor="midtop")
 
-    # Multiplier
+    # High score (top-right, normal mode only)
+    if not state.level_mode:
+        hs = get_current_high_score(
+            state.difficulty, state.level, state.level_mode, g.high_scores,
+        )
+        draw_text(screen, "BEST", fonts["tiny"],
+                  Colors.TEXT_MUTED, (SCREEN_WIDTH - 14, 4), anchor="topright")
+        draw_text(screen, str(hs), fonts["small"],
+                  Colors.TEXT_SECONDARY, (SCREEN_WIDTH - 14, 16), anchor="topright")
+
+    # Bottom bar — glass style with accent at top
+    draw_glass_bar(
+        screen, (0, SCREEN_HEIGHT - bottom_h, SCREEN_WIDTH, bottom_h),
+        alpha=150, accent_color=Colors.PRIMARY, accent_side="top",
+    )
+
+    by = SCREEN_HEIGHT - bottom_h
+
+    # Multiplier (bottom-left) with pulsing glow
     if state.screen == GameScreen.PLAYING and state.score_multiplier > 1.0:
-        m_txt = fonts["medium"].render(f"x{state.score_multiplier:.1f}", True, GOLD)
-        screen.blit(m_txt, (SCREEN_WIDTH - m_txt.get_width() - 10, 40))
+        m_text = f"x{state.score_multiplier:.1f}"
 
-    # Enemy point values
-    _draw_enemy_points(g)
+        # Glow behind multiplier
+        m_font = fonts["medium"]
+        m_surf = m_font.render(m_text, True, Colors.SECONDARY)
+        glow = m_surf.copy()
+        glow.set_alpha(35)
+        for ox, oy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+            screen.blit(glow, (16 + ox, by + 7 + oy))
 
-    # Weapon panel (right side, stacked vertically)
+        draw_text(screen, m_text, fonts["medium"], Colors.SECONDARY,
+                  (16, by + 7), shadow=True)
+
+    # Weapon selector (bottom-center)
     if state.screen == GameScreen.PLAYING:
-        _draw_weapon_panel(g)
+        _draw_weapon_bar(g, by)
+
+    # Lives (bottom-right)
+    if state.screen == GameScreen.PLAYING:
+        _draw_lives(g, by)
 
 
-def _draw_enemy_points(g: Game) -> None:
-    fonts = g.assets.fonts
-    screen = g.screen
-    state = g.state
-    sm = state.score_multiplier
-
-    try:
-        icon_size = 25
-        try:
-            icon = pygame.transform.scale(g.assets.images["enemy"], (icon_size, icon_size))
-        except (pygame.error, KeyError):
-            icon = pygame.Surface((icon_size, icon_size))
-            icon.fill(CYAN)
-        screen.blit(icon, (10, 100))
-        pts = fonts["small"].render(f"{int(10 * sm)} poeng", True, WHITE)
-        screen.blit(pts, (40, 110))
-
-        # Strong enemies only for hard+ or level mode level 3+
-        if state.difficulty >= 3 or (state.level_mode and state.level >= 3):
-            s_size = 30
-            try:
-                s_icon = pygame.transform.scale(g.assets.images["strong_enemy"], (s_size, s_size))
-            except (pygame.error, KeyError):
-                s_icon = pygame.Surface((s_size, s_size))
-                s_icon.fill(RED)
-            screen.blit(s_icon, (10, 130))
-            s_pts = fonts["small"].render(f"{int(25 * sm)} poeng", True, WHITE)
-            screen.blit(s_pts, (45, 140))
-    except Exception as e:
-        print(f"Error in draw_enemy_points: {e}")
-
-
-def _draw_weapon_panel(g: Game) -> None:
+def _draw_weapon_bar(g: Game, bar_y: int) -> None:
+    """Draw the centered weapon selector in the bottom bar."""
     fonts = g.assets.fonts
     screen = g.screen
     player = g.player
     config = g.game_config
 
-    panel_w = 130
-    panel_h = 35
-    spacing = 10
-    start_x = SCREEN_WIDTH - panel_w - 10
-    start_y = 120
+    pill_w = 92
+    pill_h = 26
+    spacing = 8
+    total = 3 * pill_w + 2 * spacing
+    start_x = SCREEN_WIDTH // 2 - total // 2
+    y = bar_y + 7
 
     weapons = [
-        {"name": "Laser", "key": "1", "type": "normal", "unlocked": True,
-         "bg": (40, 60, 50), "border": PASTEL_COLORS["easy"], "text": PASTEL_COLORS["easy"]},
-        {"name": "Hagle", "key": "2", "type": "shotgun",
-         "unlocked": config["max_level_reached"] > 5,
-         "bg": (60, 50, 40) if config["max_level_reached"] > 5 else (50, 50, 50),
-         "border": PASTEL_COLORS["medium"] if config["max_level_reached"] > 5 else (120, 120, 120),
-         "text": PASTEL_COLORS["medium"] if config["max_level_reached"] > 5 else (150, 150, 150),
-         "locked_text": "Hagle [Lvl 5+]"},
-        {"name": "Pisk", "key": "3", "type": "electric whip",
-         "unlocked": config["max_level_reached"] >= 10,
-         "bg": (60, 40, 40) if config["max_level_reached"] >= 10 else (50, 50, 50),
-         "border": PASTEL_COLORS["hard"] if config["max_level_reached"] >= 10 else (120, 120, 120),
-         "text": PASTEL_COLORS["hard"] if config["max_level_reached"] >= 10 else (150, 150, 150),
-         "locked_text": "Pisk [Lvl 10+]",
-         "charged": player.whip_charge >= player.whip_charge_threshold},
+        ("Laser", "normal", True, Colors.EASY),
+        ("Hagle", "shotgun", config["max_level_reached"] > 5, Colors.MEDIUM),
+        ("Pisk", "electric whip", config["max_level_reached"] >= 10, Colors.HARD),
     ]
 
-    for i, w in enumerate(weapons):
-        py = start_y + i * (panel_h + spacing)
+    for i, (name, wtype, unlocked, accent) in enumerate(weapons):
+        px = start_x + i * (pill_w + spacing)
+        r = pygame.Rect(px, y, pill_w, pill_h)
 
-        is_selected = False
-        if w["type"] == "electric whip":
-            is_selected = w.get("charged", False) and w["unlocked"]
+        if wtype == "electric whip":
+            is_selected = unlocked and player.whip_charge >= player.whip_charge_threshold
         else:
-            is_selected = player.current_weapon == w["type"]
+            is_selected = player.current_weapon == wtype
 
-        pygame.draw.rect(screen, w["bg"], (start_x, py, panel_w, panel_h))
+        if not unlocked:
+            pygame.draw.rect(screen, Colors.BG_DEEP, r, border_radius=pill_h // 2)
+            pygame.draw.rect(screen, Colors.LOCKED, r, 1, border_radius=pill_h // 2)
+            draw_text(screen, name, fonts["tiny"], Colors.LOCKED_TEXT,
+                      (r.centerx, r.centery), anchor="center")
+        elif is_selected:
+            # Glow aura behind selected pill
+            glow = pygame.Surface((pill_w + 8, pill_h + 8), pygame.SRCALPHA)
+            pygame.draw.rect(glow, (*accent[:3], 30),
+                             (0, 0, pill_w + 8, pill_h + 8),
+                             border_radius=pill_h // 2 + 4)
+            screen.blit(glow, (px - 4, y - 4))
 
-        # Whip charge bar
-        if w["type"] == "electric whip" and w["unlocked"]:
+            pygame.draw.rect(screen, accent, r, border_radius=pill_h // 2)
+            draw_text(screen, name, fonts["tiny"], Colors.BG_DEEP,
+                      (r.centerx, r.centery), anchor="center")
+        else:
+            pygame.draw.rect(screen, (*Colors.BG_DEEP[:3], 180), r,
+                             border_radius=pill_h // 2)
+            pygame.draw.rect(screen, accent, r, 1, border_radius=pill_h // 2)
+            draw_text(screen, name, fonts["tiny"], accent,
+                      (r.centerx, r.centery), anchor="center")
+
+        # Whip charge indicator
+        if wtype == "electric whip" and unlocked:
             ratio = player.whip_charge / player.whip_charge_threshold
-            fill_w = int(panel_w * min(max(ratio, 0), 1))
-            if player.whip_charge >= player.whip_charge_threshold:
-                pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) / 2
-                factor = 1.0 + 0.5 * pulse
-                fill_color = (min(255, int(RED[0] * factor)),
-                              min(255, int(RED[1] * factor)),
-                              min(255, int(RED[2] * factor)))
-                glow = (min(255, int(RED[0] * (1.0 + 0.7 * pulse))),
-                        min(255, int(RED[1] * (1.0 + 0.7 * pulse))),
-                        min(255, int(RED[2] * (1.0 + 0.7 * pulse))))
-                pygame.draw.rect(screen, glow,
-                                 (start_x - 2, py - 2, panel_w + 4, panel_h + 4), 2)
+            if ratio < 1.0:
+                charge_y = y + pill_h + 3
+                charge_w = int(pill_w * min(max(ratio, 0), 1))
+                pygame.draw.rect(screen, Colors.BG_DEEP,
+                                 (px, charge_y, pill_w, 3), border_radius=2)
+                if charge_w > 0:
+                    # Gradient charge bar
+                    pygame.draw.rect(screen, Colors.WHIP_CHARGING,
+                                     (px, charge_y, charge_w, 3), border_radius=2)
             else:
-                fill_color = RED
-            pygame.draw.rect(screen, fill_color, (start_x, py, fill_w, panel_h))
+                # Pulsing glow when fully charged
+                pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) / 2
+                glow_alpha = int(30 + 50 * pulse)
+                glow_surf = pygame.Surface((pill_w + 8, pill_h + 8), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surf, (*Colors.WHIP_READY, glow_alpha),
+                                 (0, 0, pill_w + 8, pill_h + 8),
+                                 border_radius=pill_h // 2 + 4)
+                screen.blit(glow_surf, (px - 4, y - 4))
 
-        pygame.draw.rect(screen, w["border"],
-                         (start_x, py, panel_w, panel_h), 3 if is_selected else 1)
 
-        label = f"{w['name']} [{w['key']}]" if w["unlocked"] else w.get("locked_text", f"{w['name']} [Låst]")
-        txt = fonts["small"].render(label, True, WHITE if is_selected else w["text"])
-        screen.blit(txt, (start_x + panel_w // 2 - txt.get_width() // 2,
-                          py + panel_h // 2 - txt.get_height() // 2))
+def _draw_lives(g: Game, bar_y: int) -> None:
+    """Draw lives as small ship icons in the bottom-right."""
+    screen = g.screen
+    lives = g.player.lives
+
+    icon_size = 20
+    spacing = 5
+    x = SCREEN_WIDTH - 16
+
+    try:
+        icon = pygame.transform.scale(
+            g.assets.images["player"], (icon_size, icon_size),
+        )
+    except (pygame.error, KeyError):
+        icon = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
+        pygame.draw.polygon(
+            icon, Colors.PRIMARY,
+            [(icon_size // 2, 0), (0, icon_size), (icon_size, icon_size)],
+        )
+
+    for i in range(lives):
+        ix = x - (i + 1) * (icon_size + spacing)
+        screen.blit(icon, (ix, bar_y + 10))

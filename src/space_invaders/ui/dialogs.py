@@ -7,16 +7,22 @@ from typing import TYPE_CHECKING
 import pygame
 
 from space_invaders.constants import (
-    CYAN,
+    Colors,
     LEVELS_PER_PAGE,
     MAX_LEVEL_PAGES,
-    PASTEL_COLORS,
-    RED,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
-    WHITE,
 )
 from space_invaders.systems.scoring import get_current_high_score
+from space_invaders.ui.draw_utils import (
+    draw_button,
+    draw_glow_text,
+    draw_panel,
+    draw_separator,
+    draw_slider,
+    draw_text,
+    draw_toggle,
+)
 
 if TYPE_CHECKING:
     from space_invaders.game import Game
@@ -31,41 +37,46 @@ def draw_level_select(g: Game) -> None:
     screen = g.screen
     state = g.state
     config = g.game_config
+    mouse = state.mouse_pos
 
-    title = fonts["large"].render("VELG LEVEL", True, WHITE)
-    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 50))
+    draw_glow_text(screen, "VELG LEVEL", fonts["large"], Colors.PRIMARY,
+                   (SCREEN_WIDTH // 2, 45), glow_color=(*Colors.PRIMARY[:3], 30),
+                   glow_radius=6)
 
     level_side = 80
     margin = 20
-    grid_x = int(SCREEN_WIDTH * 0.25) - ((3 * level_side + 2 * margin) // 2)
+    grid_total_w = 3 * level_side + 2 * margin
+    grid_x = int(SCREEN_WIDTH * 0.25) - grid_total_w // 2
     grid_y = 150
 
     # Page indicator
-    page_txt = fonts["medium"].render(
-        f"Side {state.current_level_page + 1}/{MAX_LEVEL_PAGES}", True, WHITE)
-    screen.blit(page_txt, (grid_x + (3 * level_side + 2 * margin) // 2
-                           - page_txt.get_width() // 2, 110))
+    draw_text(screen, f"Side {state.current_level_page + 1}/{MAX_LEVEL_PAGES}",
+              fonts["medium"], Colors.TEXT_SECONDARY,
+              (grid_x + grid_total_w // 2, 110), anchor="midtop")
 
     # Navigation panel
-    nav_x = grid_x + 3 * level_side + 2 * margin + 40
+    nav_x = grid_x + grid_total_w + 40
     nav_w = SCREEN_WIDTH - nav_x - 20
     nav_h = 3 * level_side + 2 * margin
-    pygame.draw.rect(screen, (50, 50, 70), (nav_x, grid_y, nav_w, nav_h))
-    pygame.draw.rect(screen, WHITE, (nav_x, grid_y, nav_w, nav_h), 2)
+    draw_panel(screen, (nav_x, grid_y, nav_w, nav_h),
+               Colors.BG_CARD, Colors.BORDER_MEDIUM, radius=14, gradient_top=True)
 
-    nav_title = fonts["medium"].render("Navigasjon", True, WHITE)
-    screen.blit(nav_title, (nav_x + nav_w // 2 - nav_title.get_width() // 2, grid_y + 20))
+    draw_glow_text(screen, "Navigasjon", fonts["medium"], Colors.PRIMARY,
+                   (nav_x + nav_w // 2, grid_y + 20),
+                   glow_color=(*Colors.PRIMARY[:3], 15), glow_radius=3)
+
+    draw_separator(screen, nav_x + 20, grid_y + 52, nav_w - 40, Colors.BORDER_SUBTLE)
 
     hints = [
-        "Piltaster høyre/venstre",
-        "eller N/P for å bla",
-        "ESC for å gå tilbake",
-        "Tall 1-9 for å velge level",
+        "Piltaster h\u00f8yre/venstre",
+        "eller N/P for \u00e5 bla",
+        "ESC for \u00e5 g\u00e5 tilbake",
+        "Tall 1-9 for \u00e5 velge level",
     ]
-    ns = (nav_h - 80) // 4
+    ns = (nav_h - 90) // 4
     for i, h in enumerate(hints):
-        t = fonts["small"].render(h, True, WHITE)
-        screen.blit(t, (nav_x + 20, grid_y + 60 + ns * i))
+        draw_text(screen, h, fonts["small"], Colors.TEXT_SECONDARY,
+                  (nav_x + 20, grid_y + 65 + ns * i))
 
     # Level grid
     for row in range(3):
@@ -73,53 +84,55 @@ def draw_level_select(g: Game) -> None:
             num = state.current_level_page * LEVELS_PER_PAGE + row * 3 + col + 1
             x = grid_x + col * (level_side + margin)
             y = grid_y + row * (level_side + margin)
+            r = pygame.Rect(x, y, level_side, level_side)
 
             if num < config["max_level_reached"]:
-                box_color, text_color = CYAN, WHITE
+                draw_button(screen, r, str(num), fonts["medium"],
+                            bg_color=Colors.BG_CARD, border_color=Colors.SUCCESS,
+                            text_color=Colors.TEXT_PRIMARY, radius=12,
+                            mouse_pos=mouse, shadow=True)
             elif num == config["max_level_reached"]:
-                box_color, text_color = (100, 100, 255), WHITE
+                draw_button(screen, r, str(num), fonts["medium"],
+                            bg_color=Colors.BG_CARD, border_color=Colors.PRIMARY,
+                            border_hover_color=Colors.PRIMARY_LIGHT,
+                            text_color=Colors.TEXT_PRIMARY, radius=12,
+                            selected=True, mouse_pos=mouse, shadow=True)
             else:
-                box_color, text_color = (100, 100, 100), (200, 200, 200)
-
-            pygame.draw.rect(screen, box_color, (x, y, level_side, level_side))
-            pygame.draw.rect(screen, WHITE, (x, y, level_side, level_side), 2)
-            nt = fonts["medium"].render(str(num), True, text_color)
-            screen.blit(nt, (x + level_side // 2 - nt.get_width() // 2,
-                             y + level_side // 2 - nt.get_height() // 2))
+                draw_button(screen, r, str(num), fonts["medium"],
+                            disabled=True, radius=12, mouse_pos=mouse, shadow=False)
 
     # Color legend
-    info_w = min(SCREEN_WIDTH - 40, (3 * level_side + 2 * margin) * 2)
+    info_w = min(SCREEN_WIDTH - 40, grid_total_w * 2)
     info_y = grid_y + 3 * (level_side + margin) + 10
-    info_h = 100
-    pygame.draw.rect(screen, (50, 50, 70), (grid_x, info_y, info_w, info_h))
-    pygame.draw.rect(screen, WHITE, (grid_x, info_y, info_w, info_h), 2)
+    info_h = 90
+    draw_panel(screen, (grid_x, info_y, info_w, info_h),
+               Colors.BG_CARD, Colors.BORDER_SUBTLE, radius=12, gradient_top=True)
 
-    it = fonts["medium"].render("Fargekoder:", True, WHITE)
-    screen.blit(it, (grid_x + 20, info_y + 15))
+    draw_text(screen, "Fargekoder:", fonts["small"], Colors.TEXT_SECONDARY,
+              (grid_x + 20, info_y + 12))
 
     legend_w = info_w // 3
-    bs = 25
-    ly = info_y + 45
+    ly = info_y + 38
     for i, (color, label) in enumerate([
-        (CYAN, "Fullført nivå"),
-        ((100, 100, 255), "Tilgjengelig nivå"),
-        ((100, 100, 100), "Låst nivå"),
+        (Colors.SUCCESS, "Fullf\u00f8rt niv\u00e5"),
+        (Colors.PRIMARY, "Tilgjengelig niv\u00e5"),
+        (Colors.LOCKED, "L\u00e5st niv\u00e5"),
     ]):
         cx = grid_x + i * legend_w + legend_w // 2
-        pygame.draw.rect(screen, color, (cx - bs // 2, ly, bs, bs))
-        lt = fonts["small"].render(label, True, WHITE)
-        screen.blit(lt, (cx - lt.get_width() // 2, ly + bs + 5))
+        pill = pygame.Rect(cx - 12, ly, 24, 14)
+        pygame.draw.rect(screen, color, pill, border_radius=7)
+        draw_text(screen, label, fonts["tiny"], Colors.TEXT_SECONDARY,
+                  (cx, ly + 20), anchor="midtop")
 
     # Weapon unlock info
-    wy = info_y + info_h + 20
+    wy = info_y + info_h + 15
     if config["max_level_reached"] > 5:
-        t = fonts["small"].render("Hagle (våpen) låst opp! Bruk tast 2", True, (255, 165, 0))
-        screen.blit(t, (grid_x + 20, wy))
-        wy += 30
+        draw_text(screen, "Hagle (v\u00e5pen) l\u00e5st opp! Bruk tast 2",
+                  fonts["small"], Colors.SECONDARY, (grid_x + 20, wy))
+        wy += 28
     if config["max_level_reached"] >= 10:
-        t = fonts["small"].render(
-            "Elektrisk pisk (våpen) låst opp! Bruk tast 3", True, (0, 200, 255))
-        screen.blit(t, (grid_x + 20, wy))
+        draw_text(screen, "Elektrisk pisk (v\u00e5pen) l\u00e5st opp! Bruk tast 3",
+                  fonts["small"], Colors.PRIMARY, (grid_x + 20, wy))
 
 
 # ------------------------------------------------------------------
@@ -132,111 +145,146 @@ def draw_help(g: Game) -> int:
     screen = g.screen
     state = g.state
 
-    screen.fill((0, 0, 0))
+    screen.fill(Colors.BG_DEEP)
     g.star_group.draw(screen)
 
-    ht = fonts["large"].render("SPILLMODUSER - HJELP", True, WHITE)
-    screen.blit(ht, (SCREEN_WIDTH // 2 - ht.get_width() // 2, 50))
+    draw_glow_text(screen, "SPILLMODUSER - HJELP", fonts["large"], Colors.PRIMARY,
+                   (SCREEN_WIDTH // 2, 45),
+                   glow_color=(*Colors.PRIMARY[:3], 30), glow_radius=5)
 
-    box_w = int(SCREEN_WIDTH * 0.8)
-    box_h = int(SCREEN_HEIGHT * 0.8)
+    box_w = int(SCREEN_WIDTH * 0.82)
+    box_h = int(SCREEN_HEIGHT * 0.78)
     box_x = SCREEN_WIDTH // 2 - box_w // 2
     box_y = 100
 
-    pygame.draw.rect(screen, (40, 40, 50, 180), (box_x, box_y, box_w, box_h))
-    pygame.draw.rect(screen, WHITE, (box_x, box_y, box_w, box_h), 2)
+    draw_panel(screen, (box_x, box_y, box_w, box_h),
+               Colors.BG_CARD, Colors.BORDER_MEDIUM, radius=16,
+               shadow=True, gradient_top=True)
 
-    content_rect = pygame.Rect(box_x + 20, box_y + 20, box_w - 40, box_h - 50)
+    content_rect = pygame.Rect(box_x + 24, box_y + 20, box_w - 48, box_h - 50)
     surf = pygame.Surface((content_rect.width, 1500), pygame.SRCALPHA)
 
     cy = 0
     ls = 30
-    ss = 50
+    section_gap = 25
+    indent = 24
 
-    # Game modes
-    surf.blit(fonts["medium"].render("Spillmoduser", True, (200, 200, 255)),
-              (content_rect.width // 2 - fonts["medium"].render("Spillmoduser", True, WHITE).get_width() // 2, cy))
-    cy += 40
+    # --- Game modes ---
+    draw_text(surf, "Spillmoduser", fonts["medium"], Colors.PRIMARY_LIGHT,
+              (content_rect.width // 2, cy), anchor="midtop")
+    cy += 38
+    draw_separator(surf, 20, cy, content_rect.width - 40, Colors.BORDER_SUBTLE)
+    cy += 12
 
+    tier_colors = {
+        "easy": Colors.EASY,
+        "medium": Colors.MEDIUM,
+        "hard": Colors.HARD,
+        "impossible": Colors.IMPOSSIBLE,
+        "level": Colors.LEVEL,
+    }
     modes = [
         ("Lett [1]", "easy", "Sakte fiender, siktelinje som hjelper med sikting"),
-        ("Middels [2]", "medium", "Medium hastighet på fiender, siktelinje tilgjengelig"),
-        ("Vanskelig [3]", "hard", "Raske fiender, ingen siktelinje for å hjelpe med sikting"),
+        ("Middels [2]", "medium", "Medium hastighet p\u00e5 fiender, siktelinje tilgjengelig"),
+        ("Vanskelig [3]", "hard", "Raske fiender, ingen siktelinje for \u00e5 hjelpe med sikting"),
         ("Umulig [4]", "impossible", "Fiender skyter tilbake! Ekstrem vanskelighetsgrad"),
-        ("Level Mode [L]", "level", "Spill nivåer i rekkefølge. Nye våpen låses opp ved fremgang."),
+        ("Level Mode [L]", "level", "Spill niv\u00e5er i rekkef\u00f8lge. Nye v\u00e5pen l\u00e5ses opp ved fremgang."),
     ]
     for title, key, desc in modes:
-        surf.blit(fonts["medium"].render(title, True, PASTEL_COLORS[key]), (20, cy))
-        cy += 30
-        surf.blit(fonts["small"].render(desc, True, WHITE), (20, cy))
+        draw_text(surf, title, fonts["medium"], tier_colors[key], (indent, cy))
+        cy += 28
+        draw_text(surf, desc, fonts["small"], Colors.TEXT_SECONDARY, (indent + 10, cy))
         cy += ls
 
-    cy += 20  # Extra space before controls
+    cy += section_gap
 
-    # Keyboard controls
-    surf.blit(fonts["medium"].render("Tastatur Kontroller", True, (220, 220, 150)), (20, cy))
-    cy += 40
+    # --- Keyboard controls ---
+    draw_text(surf, "Tastatur Kontroller", fonts["medium"], Colors.SECONDARY,
+              (indent, cy))
+    cy += 35
+    draw_separator(surf, indent, cy, content_rect.width - indent * 2, Colors.BORDER_SUBTLE)
+    cy += 10
     for line in [
         "Bevegelse: Piltaster eller A/D",
         "Skyt: Mellomrom, W eller Pil opp",
-        "Bytt våpen: 1, 2, 3 (hvis tilgjengelig)",
+        "Bytt v\u00e5pen: 1, 2, 3 (hvis tilgjengelig)",
         "Pause/meny: ESC",
         "Fullskjerm: F",
     ]:
-        surf.blit(fonts["small"].render(line, True, WHITE), (40, cy))
+        draw_text(surf, line, fonts["small"], Colors.TEXT_SECONDARY, (indent + 16, cy))
         cy += ls
-    cy += 20
+    cy += section_gap
 
-    # Mouse controls
-    surf.blit(fonts["medium"].render("Musisk bevegelse", True, (150, 220, 150)), (20, cy))
-    cy += 40
+    # --- Mouse controls ---
+    draw_text(surf, "Musisk bevegelse", fonts["medium"], Colors.SUCCESS,
+              (indent, cy))
+    cy += 35
+    draw_separator(surf, indent, cy, content_rect.width - indent * 2, Colors.BORDER_SUBTLE)
+    cy += 10
     for line in [
         "Bevegelse: Flytt musen horisontalt",
         "Venstre-klikk: Laser",
-        "Høyre-klikk: Hagle (om tilgjengelig)",
+        "H\u00f8yre-klikk: Hagle (om tilgjengelig)",
         "Midtklikk: El-pisk (om ladet)",
     ]:
-        surf.blit(fonts["small"].render(line, True, WHITE), (40, cy))
+        draw_text(surf, line, fonts["small"], Colors.TEXT_SECONDARY, (indent + 16, cy))
         cy += ls
-    cy += 20
+    cy += section_gap
 
-    # How to enable mouse
-    surf.blit(fonts["medium"].render("Aktivere musisk bevegelse", True, (200, 200, 200)), (20, cy))
-    cy += 40
-    surf.blit(fonts["small"].render(
-        "Gå til innstillinger [I] fra hovedmenyen og velg [5] Bytt", True, (200, 200, 200)), (40, cy))
-    cy += ss
+    # --- How to enable mouse ---
+    draw_text(surf, "Aktivere musisk bevegelse", fonts["medium"],
+              Colors.TEXT_SECONDARY, (indent, cy))
+    cy += 35
+    draw_text(surf, "G\u00e5 til innstillinger [I] fra hovedmenyen og velg [5] Bytt",
+              fonts["small"], Colors.TEXT_MUTED, (indent + 16, cy))
+    cy += ls + section_gap
 
-    # Weapon info
-    surf.blit(fonts["medium"].render("Våpeninformasjon", True, (220, 180, 180)), (20, cy))
-    cy += 40
+    # --- Weapon info ---
+    draw_text(surf, "V\u00e5peninformasjon", fonts["medium"], Colors.HARD,
+              (indent, cy))
+    cy += 35
+    draw_separator(surf, indent, cy, content_rect.width - indent * 2, Colors.BORDER_SUBTLE)
+    cy += 10
     for line in [
-        "Laser: Standard våpen, presist og raskt",
-        "Hagle: Bred spredning, kort rekkevidde, låses opp i level 5+",
-        "Elektrisk pisk: Kraftig våpen med stor rekkevidde, låses opp i level 10+",
-        "Pisken lades opp når du skyter fiender. Bruk når fulladet for best effekt.",
+        "Laser: Standard v\u00e5pen, presist og raskt",
+        "Hagle: Bred spredning, kort rekkevidde, l\u00e5ses opp i level 5+",
+        "Elektrisk pisk: Kraftig v\u00e5pen med stor rekkevidde, l\u00e5ses opp i level 10+",
+        "Pisken lades opp n\u00e5r du skyter fiender. Bruk n\u00e5r fulladet for best effekt.",
     ]:
-        surf.blit(fonts["small"].render(line, True, WHITE), (40, cy))
+        draw_text(surf, line, fonts["small"], Colors.TEXT_SECONDARY, (indent + 16, cy))
         cy += ls
 
     content_height = cy
 
-    screen.blit(surf, content_rect, (0, state.help_scroll_y, content_rect.width, content_rect.height))
+    screen.blit(surf, content_rect,
+                (0, state.help_scroll_y, content_rect.width, content_rect.height))
 
-    # Scroll indicators
+    # Scroll indicators with glow
     if state.help_scroll_y > 0:
         mid_x = box_x + box_w // 2
-        pygame.draw.polygon(screen, (200, 200, 200), [
-            (mid_x, box_y + 10), (mid_x - 15, box_y + 25), (mid_x + 15, box_y + 25)])
+        # Fade gradient at top
+        fade = pygame.Surface((box_w - 4, 20), pygame.SRCALPHA)
+        for fy in range(20):
+            a = int(80 * (1 - fy / 20))
+            pygame.draw.line(fade, (*Colors.BG_CARD[:3], a), (0, fy), (box_w - 4, fy))
+        screen.blit(fade, (box_x + 2, box_y + 2))
+        pygame.draw.polygon(screen, Colors.PRIMARY_DIM, [
+            (mid_x, box_y + 8), (mid_x - 10, box_y + 20), (mid_x + 10, box_y + 20)])
 
     if state.help_scroll_y < content_height - content_rect.height:
         mid_x = box_x + box_w // 2
         by = box_y + box_h
-        pygame.draw.polygon(screen, (200, 200, 200), [
-            (mid_x, by - 10), (mid_x - 15, by - 25), (mid_x + 15, by - 25)])
+        # Fade gradient at bottom
+        fade = pygame.Surface((box_w - 4, 20), pygame.SRCALPHA)
+        for fy in range(20):
+            a = int(80 * fy / 20)
+            pygame.draw.line(fade, (*Colors.BG_CARD[:3], a), (0, fy), (box_w - 4, fy))
+        screen.blit(fade, (box_x + 2, by - 22))
+        pygame.draw.polygon(screen, Colors.PRIMARY_DIM, [
+            (mid_x, by - 8), (mid_x - 10, by - 20), (mid_x + 10, by - 20)])
 
-    back = fonts["small"].render("Trykk ESC eller H for å gå tilbake", True, (200, 200, 200))
-    screen.blit(back, (SCREEN_WIDTH // 2 - back.get_width() // 2, box_y + box_h + 10))
+    draw_text(screen, "Trykk ESC eller H for \u00e5 g\u00e5 tilbake", fonts["small"],
+              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, box_y + box_h + 10), anchor="midtop")
 
     return content_height
 
@@ -250,72 +298,68 @@ def draw_settings(g: Game) -> None:
     screen = g.screen
     state = g.state
 
-    screen.fill((0, 0, 0))
+    screen.fill(Colors.BG_DEEP)
     g.star_group.draw(screen)
 
-    title = fonts["large"].render("INNSTILLINGER", True, WHITE)
-    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 30))
+    draw_glow_text(screen, "INNSTILLINGER", fonts["large"], Colors.PRIMARY,
+                   (SCREEN_WIDTH // 2, 28),
+                   glow_color=(*Colors.PRIMARY[:3], 30), glow_radius=5)
 
     box_w = int(SCREEN_WIDTH * 0.7)
-    box_h = int(SCREEN_HEIGHT * 0.75)
+    box_h = int(SCREEN_HEIGHT * 0.72)
     box_x = SCREEN_WIDTH // 2 - box_w // 2
-    box_y = 80
+    box_y = 82
 
-    pygame.draw.rect(screen, (40, 40, 50, 200), (box_x, box_y, box_w, box_h))
-    pygame.draw.rect(screen, (100, 100, 150), (box_x, box_y, box_w, box_h), 2)
+    draw_panel(screen, (box_x, box_y, box_w, box_h),
+               Colors.BG_CARD, Colors.BORDER_MEDIUM, radius=16,
+               shadow=True, gradient_top=True)
 
     y = box_y + 30
-    line_sp = 120
-    bar_w = int(box_w * 0.6)
-    bar_h = 20
-    bar_x = box_x + 50
+    line_sp = 115
+    bar_w = int(box_w * 0.55)
+    bar_h = 14
+    bar_x = box_x + 55
 
-    # Sound
-    screen.blit(fonts["medium"].render("Lydeffekter", True, (150, 220, 220)), (bar_x, y))
-    by = y + 35
-    pygame.draw.rect(screen, (80, 80, 80), (bar_x, by, bar_w, bar_h))
-    fw = int(bar_w * state.sound_volume)
-    pygame.draw.rect(screen, (100, 200, 200), (bar_x, by, fw, bar_h))
-    pygame.draw.rect(screen, WHITE, (bar_x, by, bar_w, bar_h), 2)
-    vt = fonts["small"].render(f"{int(state.sound_volume * 100)}%", True, WHITE)
-    screen.blit(vt, (bar_x + bar_w + 20, by))
-    screen.blit(fonts["small"].render("[1] Senk   [2] Øk", True, WHITE), (bar_x, by + bar_h + 10))
+    # --- Sound effects ---
+    draw_text(screen, "Lydeffekter", fonts["medium"], Colors.PRIMARY, (bar_x, y))
+    by = y + 38
+    draw_slider(screen, pygame.Rect(bar_x, by, bar_w, bar_h),
+                state.sound_volume, fill_color=Colors.PRIMARY)
+    draw_text(screen, f"{int(state.sound_volume * 100)}%", fonts["small"],
+              Colors.TEXT_PRIMARY, (bar_x + bar_w + 20, by - 2))
+    draw_text(screen, "[1] Senk   [2] \u00d8k", fonts["tiny"],
+              Colors.TEXT_MUTED, (bar_x, by + bar_h + 10))
 
-    # Music
+    # --- Music ---
     y += line_sp
-    screen.blit(fonts["medium"].render("Musikk", True, (220, 150, 220)), (bar_x, y))
-    by = y + 35
-    pygame.draw.rect(screen, (80, 80, 80), (bar_x, by, bar_w, bar_h))
-    fw = int(bar_w * (state.music_volume / 0.2))
-    pygame.draw.rect(screen, (200, 100, 200), (bar_x, by, fw, bar_h))
-    pygame.draw.rect(screen, WHITE, (bar_x, by, bar_w, bar_h), 2)
-    vt = fonts["small"].render(f"{int((state.music_volume / 0.2) * 100)}%", True, WHITE)
-    screen.blit(vt, (bar_x + bar_w + 20, by))
-    screen.blit(fonts["small"].render("[3] Senk   [4] Øk", True, WHITE), (bar_x, by + bar_h + 10))
+    draw_text(screen, "Musikk", fonts["medium"], Colors.IMPOSSIBLE, (bar_x, y))
+    by = y + 38
+    draw_slider(screen, pygame.Rect(bar_x, by, bar_w, bar_h),
+                state.music_volume / 0.2, fill_color=Colors.IMPOSSIBLE)
+    draw_text(screen, f"{int((state.music_volume / 0.2) * 100)}%", fonts["small"],
+              Colors.TEXT_PRIMARY, (bar_x + bar_w + 20, by - 2))
+    draw_text(screen, "[3] Senk   [4] \u00d8k", fonts["tiny"],
+              Colors.TEXT_MUTED, (bar_x, by + bar_h + 10))
 
-    # Mouse toggle
+    # --- Mouse toggle ---
     y += line_sp
-    screen.blit(fonts["medium"].render("Musisk bevegelse", True, (150, 220, 150)), (bar_x, y))
-    ty = y + 35
-    tw, th = 60, 30
-    pygame.draw.rect(screen, (80, 80, 80), (bar_x, ty, tw, th))
-    if state.mouse_control:
-        pygame.draw.rect(screen, (150, 200, 100), (bar_x + tw // 2, ty, tw // 2, th))
-    else:
-        pygame.draw.rect(screen, (200, 100, 100), (bar_x, ty, tw // 2, th))
-    pygame.draw.rect(screen, WHITE, (bar_x, ty, tw, th), 2)
+    draw_text(screen, "Musisk bevegelse", fonts["medium"], Colors.SUCCESS, (bar_x, y))
+    ty = y + 38
+    draw_toggle(screen, (bar_x, ty), state.mouse_control)
 
-    mc_color = (150, 200, 100) if state.mouse_control else (200, 100, 100)
-    mc_txt = "PÅ" if state.mouse_control else "AV"
-    screen.blit(fonts["small"].render(mc_txt, True, mc_color), (bar_x + tw + 20, ty + 5))
-    screen.blit(fonts["small"].render("[5] Bytt", True, WHITE), (bar_x, ty + th + 10))
+    label = "P\u00c5" if state.mouse_control else "AV"
+    label_color = Colors.SUCCESS if state.mouse_control else Colors.HARD
+    draw_text(screen, label, fonts["small"], label_color, (bar_x + 65, ty + 4))
+    draw_text(screen, "[5] Bytt", fonts["tiny"],
+              Colors.TEXT_MUTED, (bar_x, ty + 34))
 
-    screen.blit(fonts["small"].render(
-        "Se Hjelp [H] for kontroll-informasjon", True, (200, 200, 200)),
-        (box_x + 50, ty + th + 40))
+    draw_separator(screen, bar_x, ty + 60, bar_w, Colors.BORDER_SUBTLE)
 
-    back = fonts["medium"].render("Trykk ESC eller I for å gå tilbake", True, (200, 200, 200))
-    screen.blit(back, (SCREEN_WIDTH // 2 - back.get_width() // 2, box_y + box_h - 50))
+    draw_text(screen, "Se Hjelp [H] for kontroll-informasjon", fonts["small"],
+              Colors.TEXT_MUTED, (bar_x, ty + 72))
+
+    draw_text(screen, "Trykk ESC eller I for \u00e5 g\u00e5 tilbake", fonts["medium"],
+              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, box_y + box_h - 45), anchor="midtop")
 
 
 # ------------------------------------------------------------------
@@ -326,34 +370,42 @@ def draw_level_complete(g: Game) -> None:
     fonts = g.assets.fonts
     screen = g.screen
     state = g.state
+    transitions = g.renderer.transitions
 
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
+    overlay.fill(Colors.BG_OVERLAY)
     screen.blit(overlay, (0, 0))
 
-    dw, dh = 400, 200
+    dw, dh = 440, 240
     dx = SCREEN_WIDTH // 2 - dw // 2
-    dy = SCREEN_HEIGHT // 2 - dh // 2
 
-    pygame.draw.rect(screen, (50, 90, 60), (dx, dy, dw, dh))
-    pygame.draw.rect(screen, CYAN, (dx, dy, dw, dh), 2)
+    slide_key = "level_complete_slide"
+    offset = 0 if transitions.is_done(slide_key) else transitions.get(slide_key, 0)
+    dy = SCREEN_HEIGHT // 2 - dh // 2 + int(offset)
 
-    lt = fonts["large"].render("LEVEL FULLFØRT!", True, CYAN)
-    screen.blit(lt, (SCREEN_WIDTH // 2 - lt.get_width() // 2, dy + 30))
+    draw_panel(screen, (dx, dy, dw, dh),
+               Colors.BG_CARD, Colors.SUCCESS, border_width=2, radius=18,
+               shadow=True, shadow_offset=10, gradient_top=True)
+
+    draw_glow_text(screen, "LEVEL FULLF\u00d8RT!", fonts["large"], Colors.SUCCESS,
+                   (SCREEN_WIDTH // 2, dy + 30),
+                   glow_color=(*Colors.SUCCESS[:3], 35), glow_radius=5)
 
     if state.level > 1:
-        nl = fonts["medium"].render(
-            f"Level {state.level - 1} fullført! Neste: Level {state.level}", True, WHITE)
+        msg = f"Level {state.level - 1} fullf\u00f8rt! Neste: Level {state.level}"
     else:
-        nl = fonts["medium"].render(f"Du går nå til Level {state.level}", True, WHITE)
-    screen.blit(nl, (SCREEN_WIDTH // 2 - nl.get_width() // 2, dy + 80))
+        msg = f"Du g\u00e5r n\u00e5 til Level {state.level}"
+    draw_text(screen, msg, fonts["medium"], Colors.TEXT_PRIMARY,
+              (SCREEN_WIDTH // 2, dy + 90), anchor="midtop")
 
     if state.show_shotgun_unlock:
-        su = fonts["medium"].render("HAGLE VÅPEN LÅST OPP!", True, (255, 165, 0))
-        screen.blit(su, (SCREEN_WIDTH // 2 - su.get_width() // 2, dy + 120))
+        draw_text(screen, "HAGLE V\u00c5PEN L\u00c5ST OPP!", fonts["medium"],
+                  Colors.SECONDARY, (SCREEN_WIDTH // 2, dy + 130), anchor="midtop")
 
-    ct = fonts["small"].render("Trykk ENTER for å fortsette", True, WHITE)
-    screen.blit(ct, (SCREEN_WIDTH // 2 - ct.get_width() // 2, dy + 160))
+    draw_separator(screen, dx + 40, dy + 170, dw - 80, Colors.BORDER_SUBTLE)
+
+    draw_text(screen, "Trykk ENTER for \u00e5 fortsette", fonts["small"],
+              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, dy + 190), anchor="midtop")
 
 
 # ------------------------------------------------------------------
@@ -364,31 +416,39 @@ def draw_game_over(g: Game) -> None:
     fonts = g.assets.fonts
     screen = g.screen
     state = g.state
+    transitions = g.renderer.transitions
 
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
+    overlay.fill(Colors.BG_OVERLAY)
     screen.blit(overlay, (0, 0))
 
-    dw, dh = 400, 200
+    dw, dh = 440, 240
     dx = SCREEN_WIDTH // 2 - dw // 2
-    dy = SCREEN_HEIGHT // 2 - dh // 2
 
-    pygame.draw.rect(screen, (90, 50, 50), (dx, dy, dw, dh))
-    pygame.draw.rect(screen, RED, (dx, dy, dw, dh), 2)
+    slide_key = "game_over_slide"
+    offset = 0 if transitions.is_done(slide_key) else transitions.get(slide_key, 0)
+    dy = SCREEN_HEIGHT // 2 - dh // 2 + int(offset)
 
-    go = fonts["large"].render("GAME OVER!", True, RED)
-    screen.blit(go, (SCREEN_WIDTH // 2 - go.get_width() // 2, dy + 30))
+    draw_panel(screen, (dx, dy, dw, dh),
+               Colors.BG_CARD, Colors.DANGER, border_width=2, radius=18,
+               shadow=True, shadow_offset=10, gradient_top=True)
 
-    st = fonts["medium"].render(f"Din poengsum: {state.score}", True, WHITE)
-    screen.blit(st, (SCREEN_WIDTH // 2 - st.get_width() // 2, dy + 80))
+    draw_glow_text(screen, "GAME OVER", fonts["large"], Colors.DANGER,
+                   (SCREEN_WIDTH // 2, dy + 30),
+                   glow_color=(*Colors.DANGER[:3], 40), glow_radius=6)
+
+    draw_text(screen, f"Din poengsum: {state.score}", fonts["medium"],
+              Colors.TEXT_PRIMARY, (SCREEN_WIDTH // 2, dy + 90), anchor="midtop")
 
     hs = get_current_high_score(state.difficulty, state.level, state.level_mode, g.high_scores)
     if state.score > hs:
-        hs_msg = fonts["small"].render("Ny highscore!", True, (255, 215, 0))
-        screen.blit(hs_msg, (SCREEN_WIDTH // 2 - hs_msg.get_width() // 2, dy + 120))
+        draw_text(screen, "Ny highscore!", fonts["small"], Colors.SECONDARY,
+                  (SCREEN_WIDTH // 2, dy + 130), anchor="midtop")
 
-    ct = fonts["small"].render("Trykk ENTER for å gå til hovedmenyen", True, WHITE)
-    screen.blit(ct, (SCREEN_WIDTH // 2 - ct.get_width() // 2, dy + 160))
+    draw_separator(screen, dx + 40, dy + 170, dw - 80, Colors.BORDER_SUBTLE)
+
+    draw_text(screen, "Trykk ENTER for \u00e5 g\u00e5 til hovedmenyen", fonts["small"],
+              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, dy + 190), anchor="midtop")
 
 
 # ------------------------------------------------------------------
@@ -398,23 +458,30 @@ def draw_game_over(g: Game) -> None:
 def draw_quit_confirm(g: Game) -> None:
     fonts = g.assets.fonts
     screen = g.screen
+    transitions = g.renderer.transitions
 
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 180))
+    overlay.fill(Colors.BG_OVERLAY)
     screen.blit(overlay, (0, 0))
 
-    dw, dh = 400, 180
+    dw, dh = 440, 220
     dx = SCREEN_WIDTH // 2 - dw // 2
-    dy = SCREEN_HEIGHT // 2 - dh // 2
 
-    pygame.draw.rect(screen, (60, 60, 70), (dx, dy, dw, dh))
-    pygame.draw.rect(screen, (120, 120, 140), (dx, dy, dw, dh), 2)
+    slide_key = "quit_confirm_slide"
+    offset = 0 if transitions.is_done(slide_key) else transitions.get(slide_key, 0)
+    dy = SCREEN_HEIGHT // 2 - dh // 2 + int(offset)
 
-    qt = fonts["medium"].render("Vil du avslutte spillet?", True, WHITE)
-    screen.blit(qt, (SCREEN_WIDTH // 2 - qt.get_width() // 2, dy + 30))
+    draw_panel(screen, (dx, dy, dw, dh),
+               Colors.BG_CARD, Colors.BORDER_BRIGHT, border_width=2, radius=18,
+               shadow=True, shadow_offset=10, gradient_top=True)
 
-    yt = fonts["small"].render("Ja [J/Y] - Tilbake til hovedmeny", True, WHITE)
-    screen.blit(yt, (SCREEN_WIDTH // 2 - yt.get_width() // 2, dy + 80))
+    draw_text(screen, "Vil du avslutte spillet?", fonts["medium"],
+              Colors.TEXT_PRIMARY, (SCREEN_WIDTH // 2, dy + 35), anchor="midtop")
 
-    nt = fonts["small"].render("Nei [N/ESC] - Fortsett spill", True, WHITE)
-    screen.blit(nt, (SCREEN_WIDTH // 2 - nt.get_width() // 2, dy + 120))
+    draw_separator(screen, dx + 40, dy + 80, dw - 80, Colors.BORDER_SUBTLE)
+
+    draw_text(screen, "Ja [J/Y] - Tilbake til hovedmeny", fonts["small"],
+              Colors.TEXT_SECONDARY, (SCREEN_WIDTH // 2, dy + 100), anchor="midtop")
+
+    draw_text(screen, "Nei [N/ESC] - Fortsett spill", fonts["small"],
+              Colors.TEXT_SECONDARY, (SCREEN_WIDTH // 2, dy + 140), anchor="midtop")

@@ -41,6 +41,8 @@ class GameState:
     current_level_page: int = 0
     help_scroll_y: int = 0
     show_shotgun_unlock: bool = False
+    mouse_pos: tuple[int, int] = (0, 0)
+    menu_buttons: dict = field(default_factory=dict)
 
     # Settings
     sound_volume: float = 0.5
