@@ -168,7 +168,7 @@ def draw_menu(g: Game) -> None:
     _draw_weapon_panel(g, mouse, buttons)
 
     # Footer
-    draw_text(screen, "kkarlsen_06 2025", fonts["tiny"],
+    draw_text(screen, "hkarlsen_06 2025", fonts["tiny"],
               Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 22),
               anchor="midtop")
 
