@@ -2,18 +2,32 @@
 
 from __future__ import annotations
 
-import math
-
 import pygame
 
 from space_invaders.constants import Colors
 
+# Edge-faded gradient strips are rebuilt with a per-pixel loop, so the HUD and
+# separators — which redraw at identical sizes every frame — cache them.
+_fade_strip_cache: dict[tuple, pygame.Surface] = {}
 
-# ---------------------------------------------------------------------------
-# Cached surfaces
-# ---------------------------------------------------------------------------
 
-_vignette_cache: dict[tuple[int, int], pygame.Surface] = {}
+def _fade_strip(width: int, color: tuple[int, ...], alpha: int,
+                rows: int = 1) -> pygame.Surface:
+    """Horizontal line fading out towards both ends."""
+    key = (width, color[:3], alpha, rows)
+    strip = _fade_strip_cache.get(key)
+    if strip is not None:
+        return strip
+
+    strip = pygame.Surface((width, rows), pygame.SRCALPHA)
+    fade_zone = max(width // 5, 1)
+    for px in range(width):
+        edge = min(px, width - px, fade_zone) / fade_zone
+        a = int(alpha * min(edge, 1.0))
+        for row in range(rows):
+            strip.set_at((px, row), (*color[:3], a >> row))
+    _fade_strip_cache[key] = strip
+    return strip
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +159,16 @@ def draw_panel(
         )
         surface.blit(sh_surf, (r.x - shadow_offset // 2, r.y))
 
-    pygame.draw.rect(surface, bg_color, r, border_radius=radius)
+    # draw.rect ignores alpha on an opaque target, so translucent fills (and
+    # the fully transparent ones used by ghost buttons) go via a temp surface.
+    if len(bg_color) > 3 and bg_color[3] < 255:
+        if bg_color[3] > 0:
+            fill = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
+            pygame.draw.rect(fill, bg_color, (0, 0, r.width, r.height),
+                             border_radius=radius)
+            surface.blit(fill, r.topleft)
+    else:
+        pygame.draw.rect(surface, bg_color, r, border_radius=radius)
 
     # Subtle top-edge highlight for glass feel
     if gradient_top:
@@ -188,14 +211,8 @@ def draw_glass_bar(
     surface.blit(bar, r.topleft)
 
     # Accent line with faded edges
-    ac = (*accent_color[:3], accent_color[3] if len(accent_color) > 3 else 100)
-    accent_surf = pygame.Surface((r.width, 2), pygame.SRCALPHA)
-    fade_zone = max(r.width // 5, 1)
-    for px in range(r.width):
-        edge = min(px, r.width - px, fade_zone) / fade_zone
-        a = int(ac[3] * min(edge, 1.0))
-        accent_surf.set_at((px, 0), (*ac[:3], a))
-        accent_surf.set_at((px, 1), (*ac[:3], a // 2))
+    ac_alpha = accent_color[3] if len(accent_color) > 3 else 100
+    accent_surf = _fade_strip(r.width, accent_color, ac_alpha, rows=2)
 
     if accent_side == "bottom":
         surface.blit(accent_surf, (r.x, r.bottom - 2))
@@ -348,38 +365,9 @@ def draw_separator(
 ) -> None:
     """Draw a thin horizontal separator with optional edge fade."""
     if gradient and width > 20:
-        sep = pygame.Surface((width, 1), pygame.SRCALPHA)
-        fade_zone = max(width // 4, 1)
-        for px in range(width):
-            edge = min(px, width - px, fade_zone) / fade_zone
-            a = int(255 * min(edge, 1.0))
-            sep.set_at((px, 0), (*color[:3], a))
-        surface.blit(sep, (x, y))
+        surface.blit(_fade_strip(width, color, 255), (x, y))
     else:
         pygame.draw.line(surface, color, (x, y), (x + width, y), 1)
 
 
-# ---------------------------------------------------------------------------
-# Full-screen effects
-# ---------------------------------------------------------------------------
-
-def draw_vignette(surface: pygame.Surface, intensity: int = 60) -> None:
-    """Draw a dark vignette around screen edges for cinematic feel."""
-    w, h = surface.get_size()
-    key = (w, h)
-    if key not in _vignette_cache:
-        vig = pygame.Surface((w, h), pygame.SRCALPHA)
-        cx, cy = w / 2, h / 2
-        # Build vignette using horizontal lines with per-line alpha
-        for row in range(h):
-            dy = (row - cy) / cy
-            for col in range(0, w, 2):
-                dx = (col - cx) / cx
-                dist = math.sqrt(dx * dx + dy * dy)
-                if dist > 0.65:
-                    a = int(intensity * min((dist - 0.65) / 0.7, 1.0))
-                    vig.set_at((col, row), (0, 0, 0, a))
-                    if col + 1 < w:
-                        vig.set_at((col + 1, row), (0, 0, 0, a))
-        _vignette_cache[key] = vig
-    surface.blit(_vignette_cache[key], (0, 0))
+# Full-screen vignette now lives in systems/postfx.py, applied at present time.

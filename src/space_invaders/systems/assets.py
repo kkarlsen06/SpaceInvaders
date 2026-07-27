@@ -46,8 +46,17 @@ class AssetManager:
 
         bg_path = self.assets_dir / "background.jpg"
         try:
-            bg = pygame.image.load(str(bg_path)).convert()
-            self.images["background"] = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            bg = pygame.image.load(str(bg_path)).convert_alpha()
+            # Cover-fit, not stretch: the art is 4:3 and the screen is 16:9.
+            scale = max(SCREEN_WIDTH / bg.get_width(), SCREEN_HEIGHT / bg.get_height())
+            scaled = pygame.transform.smoothscale(
+                bg, (round(bg.get_width() * scale), round(bg.get_height() * scale)))
+            cropped = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            cropped.blit(scaled, scaled.get_rect(
+                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)))
+            # Let the nebula backdrop and stars show through the artwork.
+            cropped.set_alpha(150)
+            self.images["background"] = cropped
         except (pygame.error, FileNotFoundError) as e:
             print(f"Could not load background image: {e}")
 

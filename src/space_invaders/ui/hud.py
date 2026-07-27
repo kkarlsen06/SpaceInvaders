@@ -10,6 +10,8 @@ import pygame
 from space_invaders.constants import (
     Colors,
     DIFFICULTY_CONFIG,
+    HUD_BOTTOM_H,
+    HUD_TOP_H,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
@@ -28,21 +30,22 @@ def draw_hud(g: Game) -> None:
     screen = g.screen
     state = g.state
 
-    top_h = 36
-    bottom_h = 40
+    top_h = HUD_TOP_H
+    bottom_h = HUD_BOTTOM_H
+    pad = 40
 
     # Top bar — glass style with accent line at bottom
     draw_glass_bar(screen, (0, 0, SCREEN_WIDTH, top_h),
                    alpha=150, accent_color=Colors.PRIMARY, accent_side="bottom")
 
     # Score (top-left)
-    draw_text(screen, "SCORE", fonts["tiny"], Colors.TEXT_MUTED, (14, 4))
-    draw_text(screen, str(state.score), fonts["small"], Colors.SECONDARY, (14, 16))
+    draw_text(screen, "SCORE", fonts["tiny"], Colors.TEXT_MUTED, (pad, 6))
+    draw_text(screen, str(state.score), fonts["medium"], Colors.SECONDARY, (pad, 22))
 
     # Difficulty / level indicator
     if state.level_mode:
-        draw_text(screen, f"LEVEL {state.level}", fonts["small"],
-                  Colors.LEVEL, (160, 9))
+        draw_text(screen, f"LEVEL {state.level}", fonts["medium"],
+                  Colors.LEVEL, (pad + 190, 14))
     else:
         diff_cfg = DIFFICULTY_CONFIG[state.difficulty]
         tier_colors = {
@@ -51,26 +54,27 @@ def draw_hud(g: Game) -> None:
         }
         c = tier_colors.get(state.difficulty, Colors.TEXT_PRIMARY)
         # Glowing colored dot + text
-        dot_x, dot_y = 155, top_h // 2
+        dot_x, dot_y = pad + 190, top_h // 2
         # Glow ring
-        glow_surf = pygame.Surface((18, 18), pygame.SRCALPHA)
-        pygame.draw.circle(glow_surf, (*c[:3], 40), (9, 9), 9)
-        screen.blit(glow_surf, (dot_x - 9, dot_y - 9))
-        pygame.draw.circle(screen, c, (dot_x, dot_y), 4)
-        draw_text(screen, diff_cfg['name'], fonts["tiny"], c, (dot_x + 10, 10))
+        glow_surf = pygame.Surface((26, 26), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*c[:3], 40), (13, 13), 13)
+        screen.blit(glow_surf, (dot_x - 13, dot_y - 13))
+        pygame.draw.circle(screen, c, (dot_x, dot_y), 6)
+        draw_text(screen, diff_cfg['name'], fonts["small"], c,
+                  (dot_x + 16, dot_y), anchor="midleft")
 
     # Level progress bar (center, level mode)
     if state.level_mode and state.screen == GameScreen.PLAYING:
         reqs = set_level_requirements(state.level)
         target = reqs['target_score']
         progress = min(state.score / target, 1.0) if target > 0 else 0
-        bar_w = 200
-        bar_rect = pygame.Rect(SCREEN_WIDTH // 2 - bar_w // 2, 10, bar_w, 12)
+        bar_w = 320
+        bar_rect = pygame.Rect(SCREEN_WIDTH // 2 - bar_w // 2, 14, bar_w, 14)
         draw_slider(screen, bar_rect, progress,
                     fill_color=Colors.PRIMARY, show_handle=False)
         draw_text(screen, f"{state.score}/{target}", fonts["tiny"],
                   Colors.TEXT_MUTED,
-                  (SCREEN_WIDTH // 2, 24), anchor="midtop")
+                  (SCREEN_WIDTH // 2, 32), anchor="midtop")
 
     # High score (top-right, normal mode only)
     if not state.level_mode:
@@ -78,9 +82,9 @@ def draw_hud(g: Game) -> None:
             state.difficulty, state.level, state.level_mode, g.high_scores,
         )
         draw_text(screen, "BEST", fonts["tiny"],
-                  Colors.TEXT_MUTED, (SCREEN_WIDTH - 14, 4), anchor="topright")
-        draw_text(screen, str(hs), fonts["small"],
-                  Colors.TEXT_SECONDARY, (SCREEN_WIDTH - 14, 16), anchor="topright")
+                  Colors.TEXT_MUTED, (SCREEN_WIDTH - pad, 6), anchor="topright")
+        draw_text(screen, str(hs), fonts["medium"],
+                  Colors.TEXT_SECONDARY, (SCREEN_WIDTH - pad, 22), anchor="topright")
 
     # Bottom bar — glass style with accent at top
     draw_glass_bar(
@@ -95,15 +99,15 @@ def draw_hud(g: Game) -> None:
         m_text = f"x{state.score_multiplier:.1f}"
 
         # Glow behind multiplier
-        m_font = fonts["medium"]
+        m_font = fonts["large"]
         m_surf = m_font.render(m_text, True, Colors.SECONDARY)
         glow = m_surf.copy()
         glow.set_alpha(35)
         for ox, oy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-            screen.blit(glow, (16 + ox, by + 7 + oy))
+            screen.blit(glow, (pad + ox, by + 10 + oy))
 
-        draw_text(screen, m_text, fonts["medium"], Colors.SECONDARY,
-                  (16, by + 7), shadow=True)
+        draw_text(screen, m_text, m_font, Colors.SECONDARY,
+                  (pad, by + 10), shadow=True)
 
     # Weapon selector (bottom-center)
     if state.screen == GameScreen.PLAYING:
@@ -121,12 +125,12 @@ def _draw_weapon_bar(g: Game, bar_y: int) -> None:
     player = g.player
     config = g.game_config
 
-    pill_w = 92
-    pill_h = 26
-    spacing = 8
+    pill_w = 138
+    pill_h = 36
+    spacing = 14
     total = 3 * pill_w + 2 * spacing
     start_x = SCREEN_WIDTH // 2 - total // 2
-    y = bar_y + 7
+    y = bar_y + 12
 
     weapons = [
         ("Laser", "normal", True, Colors.EASY),
@@ -146,7 +150,7 @@ def _draw_weapon_bar(g: Game, bar_y: int) -> None:
         if not unlocked:
             pygame.draw.rect(screen, Colors.BG_DEEP, r, border_radius=pill_h // 2)
             pygame.draw.rect(screen, Colors.LOCKED, r, 1, border_radius=pill_h // 2)
-            draw_text(screen, name, fonts["tiny"], Colors.LOCKED_TEXT,
+            draw_text(screen, name, fonts["small"], Colors.LOCKED_TEXT,
                       (r.centerx, r.centery), anchor="center")
         elif is_selected:
             # Glow aura behind selected pill
@@ -157,27 +161,27 @@ def _draw_weapon_bar(g: Game, bar_y: int) -> None:
             screen.blit(glow, (px - 4, y - 4))
 
             pygame.draw.rect(screen, accent, r, border_radius=pill_h // 2)
-            draw_text(screen, name, fonts["tiny"], Colors.BG_DEEP,
+            draw_text(screen, name, fonts["small"], Colors.BG_DEEP,
                       (r.centerx, r.centery), anchor="center")
         else:
-            pygame.draw.rect(screen, (*Colors.BG_DEEP[:3], 180), r,
+            pygame.draw.rect(screen, Colors.BG_DEEP, r,
                              border_radius=pill_h // 2)
             pygame.draw.rect(screen, accent, r, 1, border_radius=pill_h // 2)
-            draw_text(screen, name, fonts["tiny"], accent,
+            draw_text(screen, name, fonts["small"], accent,
                       (r.centerx, r.centery), anchor="center")
 
         # Whip charge indicator
         if wtype == "electric whip" and unlocked:
             ratio = player.whip_charge / player.whip_charge_threshold
             if ratio < 1.0:
-                charge_y = y + pill_h + 3
+                charge_y = y + pill_h + 5
                 charge_w = int(pill_w * min(max(ratio, 0), 1))
                 pygame.draw.rect(screen, Colors.BG_DEEP,
-                                 (px, charge_y, pill_w, 3), border_radius=2)
+                                 (px, charge_y, pill_w, 4), border_radius=2)
                 if charge_w > 0:
                     # Gradient charge bar
                     pygame.draw.rect(screen, Colors.WHIP_CHARGING,
-                                     (px, charge_y, charge_w, 3), border_radius=2)
+                                     (px, charge_y, charge_w, 4), border_radius=2)
             else:
                 # Pulsing glow when fully charged
                 pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) / 2
@@ -194,12 +198,12 @@ def _draw_lives(g: Game, bar_y: int) -> None:
     screen = g.screen
     lives = g.player.lives
 
-    icon_size = 20
-    spacing = 5
-    x = SCREEN_WIDTH - 16
+    icon_size = 30
+    spacing = 8
+    x = SCREEN_WIDTH - 28
 
     try:
-        icon = pygame.transform.scale(
+        icon = pygame.transform.smoothscale(
             g.assets.images["player"], (icon_size, icon_size),
         )
     except (pygame.error, KeyError):
@@ -211,4 +215,4 @@ def _draw_lives(g: Game, bar_y: int) -> None:
 
     for i in range(lives):
         ix = x - (i + 1) * (icon_size + spacing)
-        screen.blit(icon, (ix, bar_y + 10))
+        screen.blit(icon, (ix, bar_y + 18))

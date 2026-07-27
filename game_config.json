@@ -1,12 +1,14 @@
 {
     "unlock_impossible": false,
     "unlocked_skins": [
-        "default"
+        "default",
+        "level5_skin"
     ],
     "active_skin": "default",
-    "max_level_reached": 3,
+    "max_level_reached": 8,
+    "shotgun_unlocked": true,
     "sound_volume": 0.7,
-    "music_volume": 0.13999999999999999,
+    "music_volume": 0.12999999999999995,
     "fullscreen_enabled": false,
     "mouse_control": true
 }

@@ -10,6 +10,7 @@ from space_invaders.config import save_config
 from space_invaders.entities.effects import ElectricWhip
 from space_invaders.constants import SCREEN_HEIGHT, SCREEN_WIDTH, WHIP_UNLOCK_LEVEL
 from space_invaders.state import GameScreen
+from space_invaders.systems.postfx import set_display_mode
 from space_invaders.systems.scoring import check_and_update_highscore
 
 if TYPE_CHECKING:
@@ -35,12 +36,9 @@ class InputHandler:
                 # Global: toggle fullscreen
                 if event.key == pygame.K_f:
                     g.state.fullscreen = not g.state.fullscreen
-                    if g.state.fullscreen:
-                        g.screen = pygame.display.set_mode(
-                            (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
-                    else:
-                        g.screen = pygame.display.set_mode(
-                            (SCREEN_WIDTH, SCREEN_HEIGHT))
+                    # Only the display is swapped; g.screen stays the PostFX
+                    # world surface the whole game draws into.
+                    g.display = set_display_mode(g.state.fullscreen)
                     g.game_config["fullscreen_enabled"] = g.state.fullscreen
                     save_config(g.game_config)
                     continue
@@ -242,7 +240,7 @@ class InputHandler:
         elif event.key == pygame.K_DOWN:
             g.state.help_scroll_y = min(
                 g.state.help_scroll_y + HELP_SCROLL_SPEED,
-                max(0, g.renderer.help_content_height - (int(SCREEN_HEIGHT * 0.8) - 100)))
+                max(0, g.renderer.help_content_height - g.renderer.help_view_height))
         elif event.key == pygame.K_UP:
             g.state.help_scroll_y = max(0, g.state.help_scroll_y - HELP_SCROLL_SPEED)
 

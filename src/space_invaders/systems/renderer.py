@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 import pygame
 
-from space_invaders.constants import Colors, SCREEN_HEIGHT, SCREEN_WIDTH
+from space_invaders.constants import SCREEN_HEIGHT, SCREEN_WIDTH
+from space_invaders.entities.background import make_backdrop
 from space_invaders.state import GameScreen
 from space_invaders.ui.animation import UITransitionManager
-from space_invaders.ui.draw_utils import draw_vignette
 from space_invaders.ui.menu import draw_menu
 from space_invaders.ui.hud import draw_hud
 from space_invaders.ui.dialogs import (
@@ -38,8 +38,10 @@ class Renderer:
     def __init__(self, game: Game) -> None:
         self.game = game
         self.help_content_height = 800
+        self.help_view_height = 400
         self.transitions = UITransitionManager()
         self._last_screen: GameScreen | None = None
+        self._aim_surf: pygame.Surface | None = None
 
     def draw(self) -> None:
         g = self.game
@@ -53,15 +55,13 @@ class Renderer:
             self._on_screen_change(screen)
             self._last_screen = screen
 
-        # Background
+        # Background: nebula backdrop everywhere, with the art asset layered
+        # over it on the menu.
+        g.screen.blit(make_backdrop((SCREEN_WIDTH, SCREEN_HEIGHT)), (0, 0))
         if screen == GameScreen.MENU and "background" in g.assets.images:
             g.screen.blit(g.assets.images["background"], (0, 0))
-        else:
-            g.screen.fill(Colors.BG_DEEP)
 
-        # Stars (skip on menu which uses the background image)
-        if screen != GameScreen.MENU:
-            g.star_group.draw(g.screen)
+        g.star_group.draw(g.screen)
 
         # Screen-specific drawing
         if screen == GameScreen.MENU:
@@ -84,7 +84,7 @@ class Renderer:
         elif screen == GameScreen.PLAYING:
             self._draw_gameplay(g)
 
-        pygame.display.flip()
+        g.fx.present(g.display)
 
     def _on_screen_change(self, new_screen: GameScreen) -> None:
         """Trigger animations when transitioning to a new screen."""
@@ -93,26 +93,29 @@ class Renderer:
             self.transitions.start_slide_up(key, offset=40, duration_ms=300)
 
     def _draw_gameplay(self, g: Game) -> None:
-        """Draw the playing field: aim line, sprites, vignette, HUD."""
+        """Draw the playing field: aim line, sprites, HUD.
+
+        The vignette is applied by PostFX at present time, not here.
+        """
         from space_invaders.constants import DIFFICULTY_CONFIG
 
         diff_cfg = DIFFICULTY_CONFIG[g.state.difficulty]
 
-        # Gradient aim line (easy/medium modes)
+        # Dashed targeting laser (easy/medium modes), brightest near the ship.
         if diff_cfg["show_aim_line"] and g.state.screen != GameScreen.GAME_OVER:
             aim_x = g.player.rect.centerx
-            aim_surf = pygame.Surface((4, SCREEN_HEIGHT), pygame.SRCALPHA)
-            for y in range(SCREEN_HEIGHT):
-                dist = (SCREEN_HEIGHT - y) / SCREEN_HEIGHT
-                alpha = int(40 * (1 - dist))
-                if (y // 8) % 2 == 0:
-                    aim_surf.set_at((1, y), (0, 180, 255, alpha))
-                    aim_surf.set_at((2, y), (0, 180, 255, alpha))
-            g.screen.blit(aim_surf, (aim_x - 2, 0))
+            g.screen.blit(self._aim_line(), (aim_x - 2, 0),
+                          special_flags=pygame.BLEND_RGBA_ADD)
 
         g.all_sprites.draw(g.screen)
-
-        # Vignette for cinematic feel
-        draw_vignette(g.screen)
-
         draw_hud(g)
+
+    def _aim_line(self) -> pygame.Surface:
+        """Cached aim-line strip — was rebuilt pixel by pixel every frame."""
+        if self._aim_surf is None:
+            surf = pygame.Surface((4, SCREEN_HEIGHT), pygame.SRCALPHA)
+            for y in range(0, SCREEN_HEIGHT, 16):
+                alpha = int(70 * (y / SCREEN_HEIGHT))
+                pygame.draw.rect(surf, (0, 180, 255, alpha), (1, y, 2, 8))
+            self._aim_surf = surf
+        return self._aim_surf

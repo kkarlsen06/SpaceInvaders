@@ -1,8 +1,9 @@
 """Game constants and configuration values."""
 
-# Screen
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+# Screen — 16:9 HD. The game renders to an offscreen surface of this size and
+# PostFX presents it to the display.
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
 FPS = 60
 
 # Legacy colors (kept for entity/effect code)
@@ -107,45 +108,45 @@ PASTEL_COLORS = {
 
 # Font sizes
 FONT_SIZES = {
-    "tiny": 13,
-    "small": 18,
-    "medium": 24,
-    "large": 36,
-    "xlarge": 48,
-    "title": 56,
+    "tiny": 16,
+    "small": 22,
+    "medium": 29,
+    "large": 44,
+    "xlarge": 62,
+    "title": 76,
 }
 
 # Player
-PLAYER_WIDTH = 50
-PLAYER_HEIGHT = 40
-PLAYER_SPEED = 8
+PLAYER_WIDTH = 64
+PLAYER_HEIGHT = 52
+PLAYER_SPEED = 11
 PLAYER_START_LIVES = 3
 SHOT_COOLDOWN_MS = 150
 MOUSE_SPEED_FACTOR = 0.5
 
 # Shots
-SHOT_WIDTH = 5
-SHOT_HEIGHT = 15
-SHOT_SPEED_EASY = -30
-SHOT_SPEED_NORMAL = -10
+SHOT_WIDTH = 6
+SHOT_HEIGHT = 22
+SHOT_SPEED_EASY = -34
+SHOT_SPEED_NORMAL = -13
 SHOTGUN_PELLET_ANGLES = [-45, -30, -15, 0, 15, 30, 45]
-SHOTGUN_RANGE = 200
-SHOTGUN_PELLET_WIDTH = 4
-SHOTGUN_PELLET_HEIGHT = 10
+SHOTGUN_RANGE = 280
+SHOTGUN_PELLET_WIDTH = 5
+SHOTGUN_PELLET_HEIGHT = 14
 SHOTGUN_HORIZONTAL_SPEED_FACTOR = 5
 SHOTGUN_SPEED_EASY = -20
 SHOTGUN_SPEED_NORMAL = -8
 
 # Enemies
-ENEMY_BASE_SIZE = 40
+ENEMY_BASE_SIZE = 52
 ENEMY_MIN_SCALE = 0.7
 ENEMY_MAX_SCALE = 1.2
-STRONG_ENEMY_BASE_SIZE = 50
+STRONG_ENEMY_BASE_SIZE = 66
 STRONG_ENEMY_MIN_SCALE = 0.8
 STRONG_ENEMY_MAX_SCALE = 1.3
-ENEMY_PROJECTILE_SPEED = 7
-ENEMY_PROJECTILE_WIDTH = 6
-ENEMY_PROJECTILE_HEIGHT = 15
+ENEMY_PROJECTILE_SPEED = 9
+ENEMY_PROJECTILE_WIDTH = 7
+ENEMY_PROJECTILE_HEIGHT = 20
 ENEMY_SHOOT_PROBABILITY = 0.01
 STRONG_ENEMY_SHOOT_PROBABILITY = 0.1
 ENEMY_SHOT_DELAY_MIN = 3000
@@ -168,26 +169,57 @@ WHIP_OUTER_GLOW_THICKNESS = 12
 
 # Power bonus
 BONUS_SPAWN_DELAY_MS = 15000
-BONUS_SPEED = 3
-BONUS_SIZE = 30
+BONUS_SPEED = 4
+BONUS_SIZE = 38
 
 # Particles
-PARTICLE_SIZE = 4
+PARTICLE_SIZE = 6
 PARTICLE_LIFETIME = 30
 ELECTRICAL_PARTICLE_LIFETIME = 15
 
 # Explosions
-EXPLOSION_SIZE = 50
+EXPLOSION_SIZE = 66
 EXPLOSION_FRAMES = 6
 EXPLOSION_FRAME_RATE_MS = 50
 EXPLOSION_SHRINK_PER_FRAME = 8
 
 # Stars
-STAR_COUNT = 150
+STAR_COUNT = 260
 STAR_MIN_SPEED = 0.5
-STAR_MAX_SPEED = 4.0
+STAR_MAX_SPEED = 5.0
 STAR_MIN_SIZE = 1
 STAR_MAX_SIZE = 3
+
+# ---------------------------------------------------------------------------
+# Post-processing & game feel
+# ---------------------------------------------------------------------------
+
+# Bloom: world is downscaled by this factor, dark values subtracted, blurred
+# by a second down/up pass, then added back. Lower divisor = tighter glow.
+BLOOM_DOWNSCALE = 4
+BLOOM_THRESHOLD = (70, 70, 70)      # subtracted at full res — keeps bloom on highlights
+BLOOM_STRENGTH = 200                # 0-255 scale of the additive bloom pass
+
+VIGNETTE_STRENGTH = 115
+
+# Screen shake: "trauma" 0..1, offset scales with trauma squared.
+TRAUMA_DECAY = 1.9                  # per second
+TRAUMA_MAX_OFFSET = 22
+TRAUMA_SHAKE_FREQ = 34.0
+ABERRATION_MAX = 7                  # px of RGB split at full trauma
+
+# Hitstop: brief freeze on impact, in seconds.
+HITSTOP_KILL = 0.035
+HITSTOP_DEATH = 0.13
+HITSTOP_MAX = 0.2
+
+# Score popups
+POPUP_LIFETIME = 0.85
+POPUP_RISE = 46
+
+# HUD bar heights. The player rests above the bottom bar, so both need this.
+HUD_TOP_H = 56
+HUD_BOTTOM_H = 66
 
 # Skin score thresholds
 SKIN_THRESHOLD_2 = 500
@@ -210,7 +242,9 @@ DIFFICULTY_CONFIG = {
         "key": "easy",
         "enemy_speed_range": (1, 2),
         "strong_enemy_speed_range": (1, 3),
-        "enemy_count": 3,
+        # Counts scaled with the jump from 800px to 1280px wide so the
+        # playfield keeps the same density it had at 4:3.
+        "enemy_count": 5,
         "strong_enemy_count": 0,
         "show_aim_line": True,
         "shot_speed": SHOT_SPEED_EASY,
@@ -222,8 +256,8 @@ DIFFICULTY_CONFIG = {
         "key": "medium",
         "enemy_speed_range": (1, 3),
         "strong_enemy_speed_range": (1, 3),
-        "enemy_count": 4,
-        "strong_enemy_count": 1,
+        "enemy_count": 7,
+        "strong_enemy_count": 2,
         "show_aim_line": True,
         "shot_speed": SHOT_SPEED_NORMAL,
         "shotgun_speed": SHOTGUN_SPEED_NORMAL,
@@ -234,8 +268,8 @@ DIFFICULTY_CONFIG = {
         "key": "hard",
         "enemy_speed_range": (1, 4),
         "strong_enemy_speed_range": (2, 4),
-        "enemy_count": 4,
-        "strong_enemy_count": 3,
+        "enemy_count": 7,
+        "strong_enemy_count": 5,
         "show_aim_line": False,
         "shot_speed": SHOT_SPEED_NORMAL,
         "shotgun_speed": SHOTGUN_SPEED_NORMAL,
@@ -246,8 +280,8 @@ DIFFICULTY_CONFIG = {
         "key": "impossible",
         "enemy_speed_range": (1, 4),
         "strong_enemy_speed_range": (2, 5),
-        "enemy_count": 5,
-        "strong_enemy_count": 5,
+        "enemy_count": 8,
+        "strong_enemy_count": 8,
         "show_aim_line": False,
         "shot_speed": SHOT_SPEED_NORMAL,
         "shotgun_speed": SHOTGUN_SPEED_NORMAL,

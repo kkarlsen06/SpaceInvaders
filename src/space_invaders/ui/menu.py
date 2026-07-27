@@ -38,13 +38,13 @@ def draw_menu(g: Game) -> None:
     glow_alpha = int(50 * pulse)
     draw_spaced_text(
         screen, "SPACE INVADERS", fonts["xlarge"], Colors.PRIMARY_LIGHT,
-        SCREEN_WIDTH // 2, 22, spacing=6, shadow=True,
+        SCREEN_WIDTH // 2, 34, spacing=10, shadow=True,
         glow_color=(*Colors.PRIMARY[:3], glow_alpha),
     )
 
     # Subtitle
-    draw_text(screen, "ARCADE EDITION", fonts["tiny"], Colors.TEXT_MUTED,
-              (SCREEN_WIDTH // 2, 80), anchor="midtop")
+    draw_text(screen, "ARCADE EDITION", fonts["small"], Colors.TEXT_MUTED,
+              (SCREEN_WIDTH // 2, 112), anchor="midtop")
 
     # Two-column layout
     left_panel_w = int(SCREEN_WIDTH * 0.5)
@@ -52,27 +52,28 @@ def draw_menu(g: Game) -> None:
     right_center = left_panel_w + (SCREEN_WIDTH - left_panel_w) // 2
 
     # Section headers
+    header_y = 168
     draw_glow_text(screen, "GAME MODES", fonts["medium"], Colors.TEXT_SECONDARY,
-                   (left_center, 108), glow_color=(*Colors.PRIMARY[:3], 20),
+                   (left_center, header_y), glow_color=(*Colors.PRIMARY[:3], 20),
                    glow_radius=4)
-    draw_separator(screen, left_center - 80, 138, 160, Colors.BORDER_MEDIUM)
+    draw_separator(screen, left_center - 110, header_y + 40, 220, Colors.BORDER_MEDIUM)
 
     draw_glow_text(screen, "HIGH SCORES", fonts["medium"], Colors.TEXT_SECONDARY,
-                   (right_center, 108), glow_color=(*Colors.SECONDARY[:3], 20),
+                   (right_center, header_y), glow_color=(*Colors.SECONDARY[:3], 20),
                    glow_radius=4)
-    draw_separator(screen, right_center - 80, 138, 160, Colors.BORDER_MEDIUM)
+    draw_separator(screen, right_center - 110, header_y + 40, 220, Colors.BORDER_MEDIUM)
 
     # Grid layout for difficulty buttons
-    grid_top = 155
-    grid_row_h = 70
+    grid_top = 232
+    grid_row_h = 88
     grid_col_w = int(left_panel_w * 0.44)
-    grid_margin = 12
+    grid_margin = 16
 
     # Modes panel background
     modes_bw = int(left_panel_w * 0.96)
-    modes_bh = int(grid_row_h * 3.6)
+    modes_bh = int(grid_row_h * 3.35)
     modes_bx = left_center - modes_bw // 2
-    modes_by = grid_top - 10
+    modes_by = grid_top - 18
     draw_panel(screen, (modes_bx, modes_by, modes_bw, modes_bh),
                Colors.BG_CARD, Colors.BORDER_SUBTLE, radius=14, gradient_top=True)
 
@@ -135,17 +136,15 @@ def draw_menu(g: Game) -> None:
     # High scores panel
     hs_bw = int(modes_bw * 0.95)
     hs_bx = right_center - hs_bw // 2
-    hs_by = grid_top - 10
+    hs_by = modes_by
     draw_panel(screen, (hs_bx, hs_by, hs_bw, modes_bh),
                Colors.BG_CARD, Colors.BORDER_SUBTLE, radius=14, gradient_top=True)
 
-    score_spacing = modes_bh // 5
-    hs_y = hs_by + score_spacing // 2 + 12
     tier_keys = [
-        (1, "Lett", "easy"),
-        (2, "Middels", "medium"),
-        (3, "Vanskelig", "hard"),
-        (4, "Umulig", "impossible"),
+        ("Lett", "easy"),
+        ("Middels", "medium"),
+        ("Vanskelig", "hard"),
+        ("Umulig", "impossible"),
     ]
     tier_color_map = {
         "easy": Colors.EASY,
@@ -153,15 +152,21 @@ def draw_menu(g: Game) -> None:
         "hard": Colors.HARD,
         "impossible": Colors.IMPOSSIBLE,
     }
-    for _diff, name, key in tier_keys:
+    # Label left-aligned, value right-aligned: they can never collide however
+    # long the name or the score gets.
+    inset = 34
+    score_spacing = (modes_bh - inset) // len(tier_keys)
+    hs_y = hs_by + inset + score_spacing // 2
+    for i, (name, key) in enumerate(tier_keys):
         sc = g.high_scores.get(key, 0)
         color = tier_color_map[key]
-        # Score label
         draw_text(screen, name, fonts["small"], Colors.TEXT_MUTED,
-                  (right_center - 50, hs_y))
-        # Score value
-        draw_text(screen, str(sc), fonts["medium"], color,
-                  (right_center + 50, hs_y - 2))
+                  (hs_bx + inset, hs_y), anchor="midleft")
+        draw_text(screen, str(sc), fonts["large"], color,
+                  (hs_bx + hs_bw - inset, hs_y), anchor="midright")
+        if i < len(tier_keys) - 1:
+            draw_separator(screen, hs_bx + inset, hs_y + score_spacing // 2,
+                           hs_bw - inset * 2, Colors.BORDER_SUBTLE)
         hs_y += score_spacing
 
     # Weapon panel
@@ -169,12 +174,12 @@ def draw_menu(g: Game) -> None:
 
     # Footer
     draw_text(screen, "hkarlsen_06 2025", fonts["tiny"],
-              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 22),
+              Colors.TEXT_MUTED, (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30),
               anchor="midtop")
 
     # Help button
-    help_r = pygame.Rect(SCREEN_WIDTH - 270, SCREEN_HEIGHT - 34, 70, 24)
-    draw_button(screen, help_r, "Help", fonts["tiny"],
+    help_r = pygame.Rect(SCREEN_WIDTH - 300, SCREEN_HEIGHT - 46, 96, 32)
+    draw_button(screen, help_r, "Help", fonts["small"],
                 bg_color=(0, 0, 0, 0), border_color=Colors.BORDER_SUBTLE,
                 text_color=Colors.TEXT_SECONDARY,
                 border_hover_color=Colors.PRIMARY,
@@ -184,8 +189,8 @@ def draw_menu(g: Game) -> None:
     buttons["help"] = help_r
 
     # Settings button
-    settings_r = pygame.Rect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 34, 90, 24)
-    draw_button(screen, settings_r, "Settings", fonts["tiny"],
+    settings_r = pygame.Rect(SCREEN_WIDTH - 180, SCREEN_HEIGHT - 46, 124, 32)
+    draw_button(screen, settings_r, "Settings", fonts["small"],
                 bg_color=(0, 0, 0, 0), border_color=Colors.BORDER_SUBTLE,
                 text_color=Colors.TEXT_SECONDARY,
                 border_hover_color=Colors.PRIMARY,
@@ -203,16 +208,16 @@ def _draw_weapon_panel(g: Game, mouse: tuple[int, int],
     screen = g.screen
 
     draw_glow_text(screen, "VÅPEN", fonts["medium"], Colors.TEXT_SECONDARY,
-                   (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 155),
+                   (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 186),
                    glow_color=(*Colors.PRIMARY[:3], 15), glow_radius=3)
-    draw_separator(screen, SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 128,
-                   100, Colors.BORDER_MEDIUM)
+    draw_separator(screen, SCREEN_WIDTH // 2 - 70, SCREEN_HEIGHT - 146,
+                   140, Colors.BORDER_MEDIUM)
 
-    panel_w, panel_h = 180, 48
-    spacing = 20
+    panel_w, panel_h = 250, 62
+    spacing = 26
     total = 3 * panel_w + 2 * spacing
     start_x = (SCREEN_WIDTH - total) // 2
-    y = SCREEN_HEIGHT - 118
+    y = SCREEN_HEIGHT - 128
 
     max_lvl = g.game_config["max_level_reached"]
     weapon_keys = ["weapon_laser", "weapon_shotgun", "weapon_whip"]
@@ -235,7 +240,7 @@ def _draw_weapon_panel(g: Game, mouse: tuple[int, int],
     for i, (label, unlocked, accent, bg) in enumerate(weapons):
         px = start_x + i * (panel_w + spacing)
         r = pygame.Rect(px, y, panel_w, panel_h)
-        draw_button(screen, r, label, fonts["small"],
+        draw_button(screen, r, label, fonts["medium"],
                     bg_color=bg, border_color=accent,
                     text_color=accent if unlocked else Colors.LOCKED_TEXT,
                     border_hover_color=accent,
